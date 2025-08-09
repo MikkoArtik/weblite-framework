@@ -1,0 +1,89 @@
+image:
+  name: docker:dind
+
+services:
+  - docker:dind
+
+variables:
+  DOCKER_DRIVER: overlay2
+  TEST_IMAGE_NAME: $CI_COMMIT_SHORT_SHA-testenv:weblite
+  TEST_ENV_CONTAINER_NAME: $CI_COMMIT_SHORT_SHA-testenv-weblite
+
+before_script:
+  - docker version
+  - docker compose version
+  - echo "$DOCKER_REGISTRY_PASS" | docker login $DOCKER_REGISTRY --username $DOCKER_REGISTRY_USER --password-stdin
+
+stages:
+  - build
+  - run
+  - lint
+  - test
+  - stop
+  - cleaning
+  - deploy
+
+# ---------------------------- build -----------------------------------------
+
+build-job:
+  stage: build
+  environment:
+    name: test
+  script:
+    - docker build -t $TEST_IMAGE_NAME .
+
+# ---------------------------- running ----------------------------------------
+
+run-job:
+  stage: run
+  needs: [build-job]
+  environment:
+    name: test
+  script:
+    - docker run -d --name $TEST_ENV_CONTAINER_NAME $TEST_IMAGE_NAME
+
+# ---------------------------- linting ----------------------------------------
+
+lint-job:
+  stage: lint
+  needs: [run-job]
+  environment:
+    name: test
+  script:
+    - docker exec $TEST_ENV_CONTAINER_NAME flake8 .
+    - docker exec $TEST_ENV_CONTAINER_NAME black --check --diff .
+    - docker exec $TEST_ENV_CONTAINER_NAME mypy .
+    - docker exec $TEST_ENV_CONTAINER_NAME isort --check-only .
+
+# ---------------------------- testing ----------------------------------------
+
+test-job:
+  stage: test
+  needs: [lint-job]
+  environment:
+    name: test
+  script:
+    - docker exec $TEST_ENV_CONTAINER_NAME pytest tests -s -v
+
+# ---------------------------- stopping ---------------------------------------
+
+stop-job:
+  stage: stop
+  needs: [run-job]
+  environment:
+    name: test
+  script:
+    - docker stop $TEST_ENV_CONTAINER_NAME
+
+# ---------------------------- cleaning ---------------------------------------
+
+cleaning-job:
+  stage: cleaning
+  needs: [stop-job]
+  environment:
+    name: test
+  script:
+    - docker rm $TEST_ENV_CONTAINER_NAME
+    - docker rmi -f $TEST_IMAGE_NAME
+
+  when: always
