@@ -1,4 +1,11 @@
 # Folders
-venv
+
 .idea
+
+venv
+dist
+
+
+# Files
+
 .python-version
