@@ -16,8 +16,15 @@
 | Безопасность | Выявлена уязвимость.                                                   |
 
 
+
+
 ## [Unreleased]
 
 ### Добавлено
 
+- Конфигурация линтеров flake8, black, isort и mypy в pyproject.toml;
+- flake8 настроен с inline-quotes = "'", max-line-length = 79, docstring-convention = "google", require-annotations = true, max-complexity = 5, игнорированием ошибки ANN101,D104;
+- black с длиной строки 79 и отключённой нормализацией кавычек;
+- isort с трейлинговыми запятыми, многолинейным выводом и длиной строки 79;
+- mypy с строгой проверкой, поддержкой плагина pydantic;
 - Базовые файлы проекта;
