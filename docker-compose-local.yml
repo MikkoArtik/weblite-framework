@@ -1,0 +1,20 @@
+services:
+  weblite_framework:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: weblite_framework
+    env_file:
+      - local.env
+    volumes:
+      - .:/app
+    command: ["sleep", "infinity"]
+    depends_on:
+      - s3mock
+
+  s3mock:
+    image: adobe/s3mock:latest
+    env_file:
+      - local.env
+    ports:
+      - "${S3MOCK_PORT:-9091}:9090"

@@ -1,0 +1,27 @@
+services:
+  weblite_framework:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: weblite_framework
+    environment:
+      # Конфигурация подключения к S3 (для приложения)
+      S3_BUCKET: my-bucket
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY: dummy
+      S3_SECRET_KEY: dummy
+      S3_ENDPOINT_URL: http://s3mock:9090
+    volumes:
+      - .:/app
+    command: ["sleep", "infinity"]
+    depends_on:
+      - s3mock
+
+  s3mock:
+    image: adobe/s3mock:latest
+    environment:
+      # Конфигурация самого мока
+      S3MOCK_PORT: "9090"
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: my-bucket
+    ports:
+      - "9091:9090"
