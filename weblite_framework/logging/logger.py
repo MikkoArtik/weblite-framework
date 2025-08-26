@@ -7,7 +7,6 @@ from datetime import datetime
 from logging.handlers import QueueHandler, QueueListener
 from queue import Queue
 
-
 __all__ = ['JsonFormatter', 'get_logger', 'get_handler']
 
 
