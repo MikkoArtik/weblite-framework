@@ -59,7 +59,7 @@ def get_handler() -> logging.Handler:
     if _handler is not None:
         return _handler
 
-    log_queue = Queue()
+    log_queue: Queue[logging.LogRecord] = Queue()
 
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(JsonFormatter())
