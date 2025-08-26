@@ -1,9 +1,11 @@
+"""Модуль логирования для weblite-framework."""
+
+import json
 import logging
+import sys
+from datetime import datetime
 from logging.handlers import QueueHandler, QueueListener
 from queue import Queue
-from datetime import datetime
-import sys
-import json
 
 
 class JsonFormatter(logging.Formatter):
@@ -14,19 +16,23 @@ class JsonFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         log_record = {
-            "timestamp": datetime.fromtimestamp(record.created).astimezone().isoformat(),
-            "level": record.levelname,
-            "source": record.module,
-            "message": record.getMessage(),
+            'timestamp': datetime.fromtimestamp(record.created)
+            .astimezone()
+            .isoformat(),
+            'level': record.levelname,
+            'source': record.module,
+            'message': record.getMessage(),
         }
         return json.dumps(log_record, ensure_ascii=False)
 
+
 _loggers: dict[str, logging.Logger] = {}
 
-def get_logger(name: str) -> logging.Logger:
-    """Создаем и возвращаем logger с именем 'name'
 
-    Логирование происходит в отдельном потоке через QueueHandler
+def get_logger(name: str) -> logging.Logger:
+    """Создаем и возвращаем logger.
+
+    Логирование происходит в отдельном потоке через QueueHandler.
     """
 
     if name in _loggers:
@@ -40,10 +46,12 @@ def get_logger(name: str) -> logging.Logger:
 
     return logger
 
+
 _handler: logging.Handler | None = None
 
+
 def get_handler() -> logging.Handler:
-    """Создаем общую очередь с listener для всех логеров
+    """Создаем общую очередь с listener для всех loggers.
     """
 
     global _handler
@@ -62,3 +70,6 @@ def get_handler() -> logging.Handler:
     _handler = QueueHandler(log_queue)
 
     return _handler
+
+
+__all__ = ['JsonFormatter', 'get_logger', 'get_handler']
