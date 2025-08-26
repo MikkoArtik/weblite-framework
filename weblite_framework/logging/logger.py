@@ -7,6 +7,8 @@ from datetime import datetime
 import sys
 import json
 
+__all__ = ['JsonFormatter', 'get_logger', 'get_handler']
+
 
 class JsonFormatter(logging.Formatter):
     """Форматируем лог-сообщения в JSON формате с полями.
@@ -68,6 +70,3 @@ def get_handler() -> logging.Handler:
     _handler = QueueHandler(log_queue)
 
     return _handler
-
-
-__all__ = ["JsonFormatter", "get_logger", "get_handler"]
