@@ -70,4 +70,4 @@ def get_handler() -> logging.Handler:
     return _handler
 
 
-__all__ = ['JsonFormatter', 'get_logger', 'get_handler']
+__all__ = ["JsonFormatter", "get_logger", "get_handler"]

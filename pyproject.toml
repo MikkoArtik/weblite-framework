@@ -33,4 +33,5 @@ pyhamcrest = "2.1.0"
 
 
 [tool.flake8]
+extend-ignore = "Q000"
 per-file-ignores = ["**/__init__.py: D104, DALL000"]
