@@ -47,6 +47,7 @@ run-job:
 lint-job:
   stage: lint
   needs: [run-job]
+
   environment:
     name: test
   script:
