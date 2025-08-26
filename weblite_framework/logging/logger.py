@@ -1,11 +1,11 @@
 """Модуль логирования для weblite-framework."""
 
-import json
 import logging
-import sys
-from datetime import datetime
 from logging.handlers import QueueHandler, QueueListener
 from queue import Queue
+from datetime import datetime
+import sys
+import json
 
 
 class JsonFormatter(logging.Formatter):
