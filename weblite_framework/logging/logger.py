@@ -21,10 +21,12 @@ class JsonFormatter(logging.Formatter):
         }
         return json.dumps(log_record, ensure_ascii=False)
 
+
 _loggers: dict[str, logging.Logger] = {}
 
+
 def get_logger(name: str) -> logging.Logger:
-    """Создаем и возвращаем logger с именем 'name'
+    """Создаем и возвращаем logger
 
     Логирование происходит в отдельном потоке через QueueHandler
     """
@@ -40,10 +42,12 @@ def get_logger(name: str) -> logging.Logger:
 
     return logger
 
+
 _handler: logging.Handler | None = None
 
+
 def get_handler() -> logging.Handler:
-    """Создаем общую очередь с listener для всех логеров
+    """Создаем общую очередь с listener для всех loggers
     """
 
     global _handler
