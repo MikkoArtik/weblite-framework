@@ -9,12 +9,13 @@ import json
 
 
 class JsonFormatter(logging.Formatter):
-    """Форматируем лог-сообщения в JSON формате с полями:
+    """Форматируем лог-сообщения в JSON формате с полями.
 
-    timestamp, level, source, message
+    Поля: timestamp, level, source, message
     """
 
-    def format(self, record: logging.LogRecord) -> str:
+    def format(self: 'JsonFormatter', record: logging.LogRecord) -> str:
+        """Форматируем запись лога в JSON строку."""
         log_record = {
             'timestamp': datetime.fromtimestamp(record.created)
             .astimezone()
@@ -34,7 +35,6 @@ def get_logger(name: str) -> logging.Logger:
 
     Логирование происходит в отдельном потоке через QueueHandler.
     """
-
     if name in _loggers:
         return _loggers[name]
 
@@ -51,9 +51,7 @@ _handler: logging.Handler | None = None
 
 
 def get_handler() -> logging.Handler:
-    """Создаем общую очередь с listener для всех loggers.
-    """
-
+    """Создаем общую очередь с listener для всех loggers."""
     global _handler
 
     if _handler is not None:
