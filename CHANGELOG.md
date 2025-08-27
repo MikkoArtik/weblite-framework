@@ -21,7 +21,11 @@
 ## [Unreleased]
 
 ### Добавлено
+
 - Добавлен logger module;
+- Родительская модель `CustomBaseModel` (на основе Pydantic v2) в `weblite_framework/schemas/base.py`;
+- Тесты для `CustomBaseModel` в `weblite_framework/tests/models/test_model.py`;
+- Документация в `README.md` по использованию и требованиям;
 - Реализован провайдер `S3Provider` для работы с S3 (методы загрузки, получения, удаления и листинга файлов);
 - Написаны юнит-тесты для `S3Provider` с использованием pytest и pytest-asyncio, включая мокирование aioboto3 и асинхронную пагинацию;
 - Конфигурация линтеров flake8, black, isort и mypy в pyproject.toml;
@@ -30,3 +34,4 @@
 - isort с трейлинговыми запятыми, многолинейным выводом и длиной строки 79;
 - mypy с строгой проверкой, поддержкой плагина pydantic;
 - Базовые файлы проекта;
+

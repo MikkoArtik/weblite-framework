@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "3.12.6"
-pydantic = "2.11.7"
+pydantic = { version = "2.11.7", extras = ["email"] }
 pydantic-settings = "2.10.1"
 aioboto3 = "15.1.0"
 
@@ -47,7 +47,7 @@ require-annotations = 1
 ignore = ["ANN101", "ANN102"]
 per-file-ignores = [
     "__init__.py:D104",
-     "tests/*:DALL000,D104"
+     "tests/*:DALL000,D104,D100"
 ]
 max-complexity = 5
 
