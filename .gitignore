@@ -13,3 +13,10 @@ __pycache__/
 # Files
 
 .python-version
+
+# Python Cache
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
