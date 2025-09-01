@@ -68,7 +68,8 @@ class S3Provider:
             S3Provider: Экземпляр провайдера с открытым S3-клиентом.
         """
         self._client_cm = self._session.client(
-            service_name='s3', **self._client_kwargs
+            service_name='s3',
+            **self._client_kwargs,
         )
         self._client = await self._client_cm.__aenter__()
         return self
@@ -91,7 +92,11 @@ class S3Provider:
         """
         try:
             if self._client_cm is not None:
-                await self._client_cm.__aexit__(exc_type, exc, tb)
+                await self._client_cm.__aexit__(
+                    exc_type=exc_type,
+                    exc_value=exc,
+                    traceback=tb,
+                )
         finally:
             self._client = None
             self._client_cm = None
@@ -118,7 +123,7 @@ class S3Provider:
         if self._client is None:
             raise RuntimeError(
                 'S3Provider нужно использовать внутри'
-                ' "async with S3Provider(...)"'
+                ' "async with S3Provider(...)"',
             )
         return self._client
 
