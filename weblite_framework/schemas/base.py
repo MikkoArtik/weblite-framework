@@ -49,7 +49,7 @@ class CustomBaseModel(BaseModel):
                 elif attr_name == 'examples' and len(attr_value) != 1:
                     errors.append(
                         f'{field_name}: '
-                        f'{attr_name} должен содержать ровно одно значение'
+                        f'{attr_name} должен содержать ровно одно значение',
                     )
         return errors
 
@@ -77,7 +77,7 @@ class CustomBaseModel(BaseModel):
             fields_str = '\n'.join(errors)
             raise TypeError(
                 f'Модель {cls.__name__} не прошла проверку документации: '
-                f'\n{fields_str}'
+                f'\n{fields_str}',
             )
 
     @classmethod

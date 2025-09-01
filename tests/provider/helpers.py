@@ -50,7 +50,8 @@ class BytesBody:
 
 
 async def aiter_pages(
-    *, pages: list[dict[str, Any]]
+    *,
+    pages: list[dict[str, Any]],
 ) -> AsyncIterator[dict[str, Any]]:
     """Эмуляция работы paginator.paginate().
 

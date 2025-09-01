@@ -105,15 +105,14 @@ class TestS3Provider:
         matcher = cast(
             Matcher[list[str]],
             contains_inanyorder(
-                'x/a.txt',
-                'x/b.txt',
-                'x/c.txt',
+                *[
+                    'x/a.txt',
+                    'x/b.txt',
+                    'x/c.txt',
+                ],
             ),
         )
-        assert_that(
-            actual_or_assertion=list(keys),
-            matcher=matcher,
-        )
+        assert_that(list(keys), matcher)
 
     @pytest.mark.parametrize(
         argnames=('method', 'args'),
@@ -140,7 +139,8 @@ class TestS3Provider:
             await getattr(provider, method)(**args)
 
     async def test_upload_file_requires_data(
-        self, provider: S3Provider
+        self,
+        provider: S3Provider,
     ) -> None:
         """Проверяет вызов ValueError при отсутствии аргумента data.
 
