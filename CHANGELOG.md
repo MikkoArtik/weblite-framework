@@ -20,6 +20,7 @@
 
 ### Добавлено
 
+- Добавлен logger module;
 - Базовый класс `BaseRepositoryClass` для создания репозиториев;
 - Абстрактные методы `_model_to_dto` и `_dto_to_model` для маппинга данных;
 - Методы для работы с БД: `_add_record`, `_update`, `add`, `commit`, `execute`, `refresh`, `flush`;
