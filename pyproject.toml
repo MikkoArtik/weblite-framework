@@ -31,6 +31,7 @@ mypy = "1.17.1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "4.3.0"
+twine = "6.1.0"
 
 [tool.pytest.ini_options]
 addopts = "-ra -q"

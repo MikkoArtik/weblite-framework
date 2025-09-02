@@ -16,11 +16,11 @@
 | Безопасность | Выявлена уязвимость.                                                   |
 
 
-## [Unreleased]
+## [0.1.0]
 
 ### Добавлено
 
-- Добавлен logger module;
+- Класс логирования;
 - Базовый класс `BaseRepositoryClass` для создания репозиториев;
 - Абстрактные методы `_model_to_dto` и `_dto_to_model` для маппинга данных;
 - Методы для работы с БД: `_add_record`, `_update`, `add`, `commit`, `execute`, `refresh`, `flush`;
@@ -30,11 +30,6 @@
 - Тесты для базового репозитория, включая тесты обработки ошибок и rollback;
 - Полное покрытие тестами всех методов базового класса;
 - Документация по использованию BaseRepositoryClass в README.md;
-
-## [0.1.0]
-
-### Добавлено
-
 - Родительская модель `CustomBaseModel` (на основе Pydantic v2) в `weblite_framework/schemas/base.py`;
 - Тесты для `CustomBaseModel` в `weblite_framework/tests/models/test_model.py`;
 - Документация в README.md по использованию и требованиям;
