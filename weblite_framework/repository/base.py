@@ -223,3 +223,19 @@ class BaseRepositoryClass(Generic[DTO, SQLModel], ABC):
         except Exception as e:
             await self.__session.rollback()
             raise e
+
+    async def _is_connection_exist(self) -> bool:
+        """Проверяет соединение с базой данных.
+
+        Returns:
+            bool: True, если соединение успешно, иначе False.
+        """
+        try:
+            await self.execute(
+                statement=text(text='SELECT 1'),
+                is_use_active_transaction=False,
+            )
+        except (InterfaceError, gaierror):
+            return False
+        else:
+            return True
