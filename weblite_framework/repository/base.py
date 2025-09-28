@@ -1,9 +1,11 @@
 """Модуль базового репозитория для работы с БД."""
 
 from abc import ABC, abstractmethod
+from socket import gaierror
 from typing import Any, Generic, TypeVar
 
-from sqlalchemy import Executable, Result
+from sqlalchemy import Executable, Result, text
+from sqlalchemy.exc import InterfaceError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from weblite_framework.database.models import BaseModel

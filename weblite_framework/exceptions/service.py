@@ -21,7 +21,7 @@ class ServiceHealthError(Exception):
             detail: Детали для уточнения ошибки
         """
         self.service_name = service_name
-        self.detail = f"{service_name}: {detail}"
+        self.detail = f'{service_name}: {detail}'
         super().__init__(self.detail)
 
 
