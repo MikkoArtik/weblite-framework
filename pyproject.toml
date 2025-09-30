@@ -10,6 +10,7 @@ python = "3.12.6"
 pydantic = { version = "2.11.7", extras = ["email"] }
 pydantic-settings = "2.10.1"
 aioboto3 = "15.1.0"
+sqlalchemy = {extras = ["asyncio"], version = "2.0.36"}
 
 [tool.poetry.group.test.dependencies]
 pytest = "8.4.1"
@@ -30,6 +31,7 @@ mypy = "1.17.1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "4.3.0"
+twine = "6.1.0"
 
 [tool.pytest.ini_options]
 addopts = "-ra -q"
@@ -39,15 +41,14 @@ asyncio_mode = "auto"
 
 [tool.flake8]
 exclude = ["__pycache__"]
-inline-quotes = "'"
 max-line-length = 79
 max-doc-length = 79
 docstring-convention = "google"
 require-annotations = 1
-ignore = ["ANN101", "ANN102"]
+ignore = ["ANN002", "ANN003","ANN101", "ANN102"]
 per-file-ignores = [
     "__init__.py:D104",
-     "tests/*:DALL000,D104,D100"
+    "tests/*:DALL000,D104,D100,FKA100"
 ]
 max-complexity = 5
 

@@ -22,3 +22,11 @@ run-linters:
 # Запуск тестов внутри контейнера weblite_framework
 test:
 	docker exec weblite_framework sh -lc "pytest tests -s -v"
+
+# Сборка пакета
+build-package:
+	poetry build
+
+# Публикация пакета
+publish-package: build-package
+	python -m twine upload dist/*

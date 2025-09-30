@@ -15,17 +15,32 @@
 |  Исправлено  | Исправлен баг.                                                         |
 | Безопасность | Выявлена уязвимость.                                                   |
 
+## [0.2.0]
 
+### Добавлено
+- Сервисный слой для проверки работоспособности сервиса (`HealthService`) в пакет `weblite_framework/service/health.py`;
+- Юнит-тесты для `HealthService` с проверкой различных сценариев работоспособности;
+- Исключения `ServiceHealthError` и `DatabaseConnectionError` для обработки ошибок соединения;
+- Класс `CommonRepo` для проверки соединения с базой данных;
+- Метод `_is_connection_exist` в `BaseRepositoryClass` для проверки соединения с базой данных;
 
-
-## [Unreleased]
+## [0.1.0]
 
 ### Добавлено
 
-- Добавлен logger module;
+- Класс логирования;
+- Базовый класс `BaseRepositoryClass` для создания репозиториев;
+- Абстрактные методы `_model_to_dto` и `_dto_to_model` для маппинга данных;
+- Методы для работы с БД: `_add_record`, `_update`, `add`, `commit`, `execute`, `refresh`, `flush`;
+- Обработка ошибок с автоматическим rollback для всех транзакций;
+- Поддержка игнорирования полей при обновлении (`ignore_fields`);
+- Автоматическое игнорирование `_sa_instance_state` при обновлении;
+- Тесты для базового репозитория, включая тесты обработки ошибок и rollback;
+- Полное покрытие тестами всех методов базового класса;
+- Документация по использованию BaseRepositoryClass в README.md;
 - Родительская модель `CustomBaseModel` (на основе Pydantic v2) в `weblite_framework/schemas/base.py`;
 - Тесты для `CustomBaseModel` в `weblite_framework/tests/models/test_model.py`;
-- Документация в `README.md` по использованию и требованиям;
+- Документация в README.md по использованию и требованиям;
 - Реализован провайдер `S3Provider` для работы с S3 (методы загрузки, получения, удаления и листинга файлов);
 - Написаны юнит-тесты для `S3Provider` с использованием pytest и pytest-asyncio, включая мокирование aioboto3 и асинхронную пагинацию;
 - Конфигурация линтеров flake8, black, isort и mypy в pyproject.toml;
