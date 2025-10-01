@@ -3,11 +3,11 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from hamcrest import assert_that, equal_to, is_, greater_than_or_equal_to
+from hamcrest import assert_that, equal_to, greater_than_or_equal_to, is_
 from sqlalchemy.exc import InterfaceError
 
-from tests.repository.helpers import SampleModel, SampleRepo
 from tests.helpers import TestModel, TestRepository, initialize_invalid_class
+from tests.repository.helpers import SampleRepo
 
 
 class TestBaseRepository:
