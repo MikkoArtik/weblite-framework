@@ -23,6 +23,8 @@
 - Исключения `ServiceHealthError` и `DatabaseConnectionError` для обработки ошибок соединения;
 - Класс `CommonRepo` для проверки соединения с базой данных;
 - Метод `_is_connection_exist` в `BaseRepositoryClass` для проверки соединения с базой данных;
+- Юнит-тесты для метода `_is_connection_exist` (успешное соединение и ошибка `InterfaceError`);
+- Вспомогательные классы для тестов репозитория (`SampleModel`, `SampleDTO`, `SampleRepo`);
 
 ## [0.1.0]
 
