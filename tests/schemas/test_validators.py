@@ -7,6 +7,7 @@ import pytest
 from freezegun import freeze_time
 from hamcrest import assert_that, equal_to
 
+from tests.schemas.helpers import add_brackets, always_fails
 from weblite_framework.schemas.validators import (
     check_email_pattern,
     check_has_timezone,
@@ -25,7 +26,6 @@ from weblite_framework.schemas.validators import (
     skip_if_none,
     validate_year_month_order,
 )
-from tests.schemas.helpers import add_brackets, always_fails
 
 
 class TestSkipIfNone:

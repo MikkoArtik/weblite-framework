@@ -35,7 +35,8 @@ class _StringValidator(Protocol):
         value: Optional[str],
         *args: object,
         **kwargs: object,
-    ) -> Optional[str]: ...
+    ) -> Optional[str]:
+        ...
 
 
 def skip_if_none(func: Callable[..., str]) -> _StringValidator:
