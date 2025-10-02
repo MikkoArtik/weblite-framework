@@ -15,6 +15,16 @@
 |  Исправлено  | Исправлен баг.                                                         |
 | Безопасность | Выявлена уязвимость.                                                   |
 
+## [0.2.0]
+
+### Добавлено
+
+-Модуль кастомных валидаторов weblite_framework/schemas/validators.py с 18 функциями валидации:
+check_not_empty, check_max_length_255, check_max_length_1000, check_email_pattern, check_russian_phone_number,
+check_no_html_scripts, check_has_timezone, check_integer, check_positive_num, check_only_symbols, 
+check_only_symbols_and_spaces, check_no_double_spaces, check_empty_to_none, validate_graduation_year, 
+validate_birth_date, validate_telegram_nickname, validate_title_symbols;
+-Полный набор тестов для всех валидаторов в tests/schemas/test_validators.py;
 
 ## [0.1.0]
 
