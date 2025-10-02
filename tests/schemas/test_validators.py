@@ -1,18 +1,18 @@
-"""Модуль для тестирования общих валидаторов."""
+"""Модуль для тестирования общих валидаторов, используемых в сервисе."""
 
 from datetime import date, datetime, timezone
-from typing import Any
+from typing import Any, Callable, Optional
 
 import pytest
-from hamcrest import assert_that, equal_to, none
+from freezegun import freeze_time
+from hamcrest import assert_that, equal_to
 
 from weblite_framework.schemas.validators import (
     check_email_pattern,
-    check_empty_to_none,
     check_has_timezone,
+    check_hidden_or_spaces,
     check_integer,
-    check_max_length_255,
-    check_max_length_1000,
+    check_length,
     check_no_double_spaces,
     check_no_html_scripts,
     check_not_empty,
@@ -20,31 +20,110 @@ from weblite_framework.schemas.validators import (
     check_only_symbols_and_spaces,
     check_positive_num,
     check_russian_phone_number,
-    validate_birth_date,
-    validate_filename,
-    validate_graduation_year,
-    validate_telegram_nickname,
-    validate_title_symbols,
+    check_symbols_numeric_spaces_special_char,
+    parse_year_month_strict,
+    skip_if_none,
+    validate_year_month_order,
 )
+from tests.schemas.helpers import add_brackets, always_fails
 
 
-class TestValidateFilename:
-    """Тесты для валидатора validate_filename."""
+class TestSkipIfNone:
+    """Тесты для декоратора skip_if_none."""
 
-    def test_validate_filename_valid(self) -> None:
-        """Проверяет, что validate_filename возвращает строку."""
-        value = 'test.txt'
-        result = validate_filename(filename=value)
+    @pytest.mark.parametrize(
+        argnames='inp, expected',
+        argvalues=[
+            (None, None),
+            ('ok', '[ok]'),
+        ],
+    )
+    def test_skip_if_none_basic(
+        self,
+        inp: str | None,
+        expected: str | None,
+    ) -> None:
+        """Проверяет базовое поведение декоратора skip_if_none.
+
+        Убеждается, что для None возвращается None,
+        а для строки вызывается исходная функция add_brackets.
+
+        Args:
+            inp: Входное значение
+            expected: Ожидаемый результат после применения декоратора
+        """
+        wrapped = skip_if_none(func=add_brackets)
         assert_that(
-            actual_or_assertion=result,
-            matcher=equal_to(obj=value),
+            actual_or_assertion=wrapped(value=inp),
+            matcher=equal_to(obj=expected),
         )
 
-    def test_validate_filename_invalid(self) -> None:
-        """Проверяет, что validate_filename выбрасывает ValueError."""
-        value = ''
+    def test_propagates_exceptions_from_wrapped(self) -> None:
+        """Исключения исходной функции пробрасываются наружу."""
+        wrapped = skip_if_none(func=always_fails)
         with pytest.raises(expected_exception=ValueError):
-            validate_filename(filename=value)
+            wrapped(value='x')
+
+
+class TestSkipIfNoneIntegration:
+    """Интеграционные проверки: существующие валидаторы с декоратором."""
+
+    @pytest.mark.parametrize(
+        argnames='func',
+        argvalues=[
+            check_not_empty,
+            check_only_symbols_and_spaces,
+            check_no_html_scripts,
+            check_symbols_numeric_spaces_special_char,
+            check_length,
+        ],
+    )
+    def test_decorated_string_validators_accept_none(
+        self,
+        func: Callable[[Optional[str]], Optional[str]],
+    ) -> None:
+        """Проверяет, что строковые валидаторы с декоратором возвращают None.
+
+        Args:
+            func: Валидатор, обёрнутый в skip_if_none
+        """
+        result = func(None)
+        assert_that(
+            actual_or_assertion=result,
+            matcher=equal_to(obj=None),
+        )
+
+    @pytest.mark.parametrize(
+        argnames='func,value,expected, kwargs',
+        argvalues=[
+            (check_not_empty, ' x ', 'x', {}),
+            (check_length, ' a ', 'a', {'max_length': 255}),
+            (check_length, ' b ', 'b', {'max_length': 1000}),
+            (check_only_symbols_and_spaces, '  Абв Гд  ', 'Абв Гд', {}),
+            (check_no_html_scripts, '  plain  ', 'plain', {}),
+            (check_symbols_numeric_spaces_special_char, '  Fo-1 ', 'Fo-1', {}),
+        ],
+    )
+    def test_decorated_string_validators_process_non_none(
+        self,
+        func: Callable[..., Optional[str]],
+        value: str,
+        expected: str,
+        kwargs: dict[str, object],
+    ) -> None:
+        """Проверяет обработку непустых значений у валидаторов с декоратором.
+
+        Args:
+            func: Валидатор, обёрнутый в skip_if_none
+            value: Входная строка для проверки
+            expected: Ожидаемый результат после валидации
+            kwargs: Дополнительные аргументы для валидатора
+        """
+        result = func(value, **kwargs)
+        assert_that(
+            actual_or_assertion=result,
+            matcher=equal_to(obj=expected),
+        )
 
 
 class TestCheckNotEmpty:
@@ -61,7 +140,14 @@ class TestCheckNotEmpty:
         self,
         value: str,
     ) -> None:
-        """Проверяет, что check_not_empty возвращает строку."""
+        """Проверяет, что check_not_empty возвращает строку.
+
+        Проверяет, что check_not_empty возвращает строку,
+        если она не пустая.
+
+        Args:
+            value: Текст, проходящий валидацию
+        """
         result = check_not_empty(value=value)
         assert_that(
             actual_or_assertion=result,
@@ -69,70 +155,86 @@ class TestCheckNotEmpty:
         )
 
     def test_check_not_empty_invalid(self) -> None:
-        """Проверяет, что check_not_empty выбрасывает ValueError."""
+        """Проверяет, что check_not_empty выбрасывает ValueError.
+
+        Проверяет, что check_not_empty выбрасывает
+        ValueError при пустой строке.
+
+        Raises:
+            ValueError: Если строка пустая.
+        """
         value = ''
         with pytest.raises(expected_exception=ValueError):
             check_not_empty(value=value)
 
 
-class TestCheckMaxLength255:
-    """Тесты для валидатора check_max_length_255."""
+class TestCheckLength:
+    """Тесты для универсального валидатора check_length."""
 
     @pytest.mark.parametrize(
-        argnames='value',
+        argnames='value, min_length, max_length, expected',
         argvalues=[
-            'A' * 255,
-            'A',
-            '    ',
-            '',
+            ('A' * 255, 1, 255, 'A' * 255),
+            (' A ', 1, 10, 'A'),
+            ('', 0, 10, ''),
+            ('   ', 0, 10, ''),
         ],
     )
-    def test_check_max_length_255_valid(
+    def test_check_length_valid(
         self,
         value: str,
+        min_length: int,
+        max_length: int,
+        expected: str,
     ) -> None:
-        """Проверяет, что check_max_length_255 возвращает строку."""
-        result = check_max_length_255(value=value)
+        """Проверяет успешную валидацию строк по длине.
+
+        Args:
+            value: Тестовая строка
+            min_length: Минимальная допустимая длина
+            max_length: Максимальная допустимая длина
+            expected: Ожидаемый результат после trim
+        """
+        result = check_length(
+            value=value,
+            min_length=min_length,
+            max_length=max_length,
+        )
         assert_that(
             actual_or_assertion=result,
-            matcher=equal_to(obj=value.strip()),
+            matcher=equal_to(obj=expected),
         )
-
-    def test_check_max_length_255_invalid(self) -> None:
-        """Проверяет, что check_max_length_255 выбрасывает ValueError."""
-        value = 'A' * 256
-        with pytest.raises(expected_exception=ValueError):
-            check_max_length_255(value=value)
-
-
-class TestCheckMaxLength1000:
-    """Тесты для валидатора check_max_length_1000."""
 
     @pytest.mark.parametrize(
-        argnames='value',
+        argnames='value, min_length, max_length',
         argvalues=[
-            'A' * 1000,
-            'A',
-            '',
-            '    ',
+            ('', 1, 10),
+            ('A' * 11, 1, 10),
+            ('  ', 1, 10),
         ],
     )
-    def test_check_max_length_1000_valid(
+    def test_check_length_invalid(
         self,
         value: str,
+        min_length: int,
+        max_length: int,
     ) -> None:
-        """Тест check_max_length_1000 с валидными данными."""
-        result = check_max_length_1000(value=value)
-        assert_that(
-            actual_or_assertion=result,
-            matcher=equal_to(obj=value.strip()),
-        )
+        """Проверяет, что check_length выбрасывает ValueError.
 
-    def test_check_max_length_1000_invalid(self) -> None:
-        """Тест check_max_length_1000 с невалидными данными."""
-        value = 'A' * 1001
+        Args:
+            value: Тестовая строка
+            min_length: Минимальная допустимая длина
+            max_length: Максимальная допустимая длина
+
+        Raises:
+            ValueError: Если строка не удовлетворяет ограничениям
+        """
         with pytest.raises(expected_exception=ValueError):
-            check_max_length_1000(value=value)
+            check_length(
+                value=value,
+                min_length=min_length,
+                max_length=max_length,
+            )
 
 
 class TestCheckOnlySymbols:
@@ -149,7 +251,14 @@ class TestCheckOnlySymbols:
         self,
         value: str,
     ) -> None:
-        """Проверяет, что check_only_symbols возвращает строку."""
+        """Проверяет, что check_only_symbols возвращает строку.
+
+        Проверяет, что check_only_symbols возвращает строку,
+        если она состоит только из символов (латиница/кириллица).
+
+        Args:
+            value: Текст, проходящий валидацию
+        """
         result = check_only_symbols(value=value)
         assert_that(
             actual_or_assertion=result,
@@ -168,7 +277,18 @@ class TestCheckOnlySymbols:
         self,
         value: str,
     ) -> None:
-        """Проверяет, что check_only_symbols выбрасывает ValueError."""
+        """Проверяет, что check_only_symbols выбрасывает ValueError.
+
+        Данный метод проверяет, что check_only_symbols выбрасывает
+        ValueError при передаче строки, состоящей не только
+        из символов (латиница/кириллица).
+
+        Args:
+            value: Текст, проходящий валидацию
+
+        Raises:
+            ValueError: Если строка состоит не только из символов
+        """
         with pytest.raises(expected_exception=ValueError):
             check_only_symbols(value=value)
 
@@ -188,7 +308,14 @@ class TestCheckOnlySymbolsAndSpaces:
         self,
         value: str,
     ) -> None:
-        """Проверяет, что check_only_symbols_and_spaces возвращает строку."""
+        """Проверяет, что check_only_symbols_and_spaces возвращает строку.
+
+        Проверяет, что что check_only_symbols_and_spaces возвращает строку
+        если она состоит только из символов (латиница/кириллица) и пробелов.
+
+        Args:
+            value: Текст, проходящий валидацию
+        """
         result = check_only_symbols_and_spaces(value=value)
         assert_that(
             actual_or_assertion=result,
@@ -207,7 +334,18 @@ class TestCheckOnlySymbolsAndSpaces:
         self,
         value: str,
     ) -> None:
-        """Тест check_only_symbols_and_spaces с невалидными данными."""
+        """Тест check_only_symbols_and_spaces с невалидными данными.
+
+        Данный метод проверяет, что check_only_symbols_and_spaces выбрасывает
+        ValueError при передаче строки, состоящей не только
+        из символов (латиница/кириллица) и пробелов.
+
+        Args:
+            value: Текст, проходящий валидацию
+
+        Raises:
+            ValueError: Если строка состоит не только из символов и пробелов
+        """
         with pytest.raises(expected_exception=ValueError):
             check_only_symbols_and_spaces(value=value)
 
@@ -227,7 +365,14 @@ class TestCheckEmailPattern:
         self,
         value: str,
     ) -> None:
-        """Проверяет, что check_email_pattern возвращает строку."""
+        """Проверяет, что check_email_pattern возвращает строку.
+
+        Проверяет, что check_email_pattern возвращает строку,
+        если она соответствует шаблону email.
+
+        Args:
+            value: Email, проходящий валидацию
+        """
         result = check_email_pattern(value=value)
         assert_that(
             actual_or_assertion=result,
@@ -246,7 +391,17 @@ class TestCheckEmailPattern:
         self,
         value: str,
     ) -> None:
-        """Проверяет, что check_email_pattern выбрасывает ValueError."""
+        """Проверяет, что check_email_pattern выбрасывает ValueError.
+
+        Проверяет, что check_email_pattern выбрасывает
+        ValueError при строке, которая не соответствует шаблону email.
+
+        Args:
+            value: Email, проходящий валидацию
+
+        Raises:
+            ValueError: Если строка не соответствует шаблону email
+        """
         with pytest.raises(expected_exception=ValueError):
             check_email_pattern(value=value)
 
@@ -255,7 +410,11 @@ class TestCheckRussianPhoneNumber:
     """Тесты для валидатора check_russian_phone_number."""
 
     def test_check_russian_phone_number_valid(self) -> None:
-        """Проверяет, что check_russian_phone_number возвращает строку."""
+        """Проверяет, что check_russian_phone_number возвращает строку.
+
+        Проверяет, что check_russian_phone_number возвращает строку,
+        если она соответствует шаблону мобильного номера телефона РФ.
+        """
         value = '+70123456789'
         result = check_russian_phone_number(value=value)
         assert_that(
@@ -276,7 +435,18 @@ class TestCheckRussianPhoneNumber:
         self,
         value: str,
     ) -> None:
-        """Проверяет, что check_russian_phone_number выбрасывает ValueError."""
+        """Проверяет, что check_russian_phone_number выбрасывает ValueError.
+
+        Проверяет, что check_russian_phone_number выбрасывает
+        ValueError при строке, которая не соответствует
+        шаблону мобильного номера телефона РФ.
+
+        Args:
+            value: Номер телефона, проходящий валидацию
+
+        Raises:
+            ValueError: Если номер телефона не соответствует шаблону
+        """
         with pytest.raises(expected_exception=ValueError):
             check_russian_phone_number(value=value)
 
@@ -296,7 +466,14 @@ class TestCheckNoHTMLScripts:
         self,
         value: str,
     ) -> None:
-        """Проверяет, что check_no_html_scripts возвращает строку."""
+        """Проверяет, что check_no_html_scripts возвращает строку.
+
+        Проверяет, что check_no_html_scripts возвращает строку,
+        если в ней не содержится html тегов и скриптов.
+
+        Args:
+            value: Текст, проходящий валидацию
+        """
         result = check_no_html_scripts(value=value)
         assert_that(
             actual_or_assertion=result,
@@ -315,7 +492,17 @@ class TestCheckNoHTMLScripts:
         self,
         value: str,
     ) -> None:
-        """Проверяет, что check_no_html_scripts выбрасывает ValueError."""
+        """Проверяет, что check_no_html_scripts выбрасывает ValueError.
+
+        Проверяет, что check_no_html_scripts выбрасывает
+        ValueError при строке, которая содержит html теги/скрипты.
+
+        Args:
+            value: Текст, проходящий валидацию
+
+        Raises:
+            ValueError: Если строка содержит html теги/скрипты
+        """
         with pytest.raises(expected_exception=ValueError):
             check_no_html_scripts(value=value)
 
@@ -324,7 +511,11 @@ class TestCheckHasTimezone:
     """Тесты для валидатора check_has_timezone."""
 
     def test_check_has_timezone_valid(self) -> None:
-        """Проверяет, что check_has_timezone возвращает datetime."""
+        """Проверяет, что check_has_timezone возвращает datetime.
+
+        Проверяет, что check_has_timezone возвращает datetime,
+        если в нем присутствует часовой пояс.
+        """
         value = datetime(
             year=2020,
             month=12,
@@ -340,7 +531,14 @@ class TestCheckHasTimezone:
         )
 
     def test_check_has_timezone_invalid(self) -> None:
-        """Проверяет, что check_has_timezone выбрасывает ValueError."""
+        """Проверяет, что check_has_timezone выбрасывает ValueError.
+
+        Проверяет, что check_has_timezone выбрасывает
+        ValueError при datetime, которой не содержит часовой пояс.
+
+        Raises:
+            ValueError: Если datetime не содержит часовой пояс
+        """
         with pytest.raises(expected_exception=ValueError):
             check_has_timezone(
                 value=datetime(
@@ -366,7 +564,11 @@ class TestCheckInteger:
         ],
     )
     def test_check_integer_valid(self, value: int) -> None:
-        """Проверяет, что check_integer возвращает целое число."""
+        """Проверяет, что check_integer возвращает целое число.
+
+        Args:
+            value: Целое число, проходящее валидацию
+        """
         result = check_integer(value=value)
         assert_that(
             actual_or_assertion=result,
@@ -384,7 +586,14 @@ class TestCheckInteger:
         ],
     )
     def test_check_integer_invalid(self, value: int | Any) -> None:
-        """Проверяет, что check_integer выбрасывает ValueError."""
+        """Проверяет, что check_integer выбрасывает ValueError.
+
+        Args:
+            value: Некорректное значение
+
+        Raises:
+            ValueError: Если значение не int
+        """
         with pytest.raises(expected_exception=ValueError):
             check_integer(value=value)
 
@@ -402,7 +611,11 @@ class TestCheckPositiveNum:
         ],
     )
     def test_check_positive_num_valid(self, value: int | float) -> None:
-        """Проверяет, что check_positive_num возвращает положительное число."""
+        """Проверяет, что check_positive_num возвращает положительное число.
+
+        Args:
+            value: Положительное число
+        """
         result = check_positive_num(value=value)
         assert_that(
             actual_or_assertion=result,
@@ -424,7 +637,14 @@ class TestCheckPositiveNum:
         self,
         value: int | float | Any,
     ) -> None:
-        """Проверяет, что check_positive_num выбрасывает ValueError."""
+        """Проверяет, что check_positive_num выбрасывает ValueError.
+
+        Args:
+            value: Некорректное значение (не число или неположительное)
+
+        Raises:
+            ValueError: Если число ≤ 0 или не число
+        """
         with pytest.raises(expected_exception=ValueError):
             check_positive_num(value=value)
 
@@ -442,7 +662,11 @@ class TestCheckNoDoubleSpaces:
         ],
     )
     def test_check_no_double_spaces_valid(self, value: str) -> None:
-        """Проверяет, что check_no_double_spaces возвращает строку."""
+        """Проверяет, что check_no_double_spaces возвращает строку.
+
+        Args:
+            value: Строка без двойных пробелов
+        """
         result = check_no_double_spaces(value=value)
         assert_that(
             actual_or_assertion=result,
@@ -459,172 +683,37 @@ class TestCheckNoDoubleSpaces:
         ],
     )
     def test_check_no_double_spaces_invalid(self, value: str | Any) -> None:
-        """Проверяет, что check_no_double_spaces выбрасывает ValueError."""
+        """Проверяет, что check_no_double_spaces выбрасывает ValueError.
+
+        Args:
+            value: Строка с двойными пробелами
+
+        Raises:
+            ValueError: Если строка содержит два и более пробела подряд
+        """
         with pytest.raises(expected_exception=ValueError):
             check_no_double_spaces(value=value)
 
 
-class TestCheckEmptyToNone:
-    """Тесты для валидатора check_empty_to_none."""
-
-    @pytest.mark.parametrize(
-        argnames='value',
-        argvalues=['', '   ', None],
-    )
-    def test_check_empty_to_none_returns_none(
-        self,
-        value: str | None,
-    ) -> None:
-        """Проверяет, что пустые значения преобразуются в None."""
-        result = check_empty_to_none(value=value)
-        assert_that(
-            actual_or_assertion=result,
-            matcher=none(),
-        )
-
-    @pytest.mark.parametrize(
-        argnames=[
-            'value',
-            'expected',
-        ],
-        argvalues=[
-            (
-                'https://example.com/p.jpg',
-                'https://example.com/p.jpg',
-            ),
-            (
-                '  https://example.com/p.jpg  ',
-                'https://example.com/p.jpg',
-            ),
-            (
-                'a b',
-                'a b',
-            ),
-        ],
-    )
-    def test_check_empty_to_none_trims_non_empty(
-        self,
-        value: str,
-        expected: str,
-    ) -> None:
-        """Проверяет, что непустые строки возвращаются с обрезанными краями."""
-        result = check_empty_to_none(value=value)
-        assert_that(
-            actual_or_assertion=result,
-            matcher=equal_to(obj=expected),
-        )
-
-
-class TestValidateGraduationYear:
-    """Тесты для валидатора validate_graduation_year."""
-
-    @pytest.mark.parametrize(
-        argnames='value',
-        argvalues=[1990, 2000, 2023],
-    )
-    def test_validate_graduation_year_valid(self, value: int) -> None:
-        """Проверяет, что validate_graduation_year возвращает год."""
-        result = validate_graduation_year(value=value)
-        assert_that(
-            actual_or_assertion=result,
-            matcher=equal_to(obj=value),
-        )
-
-    @pytest.mark.parametrize(
-        argnames='value',
-        argvalues=[1899, 0, -1],
-    )
-    def test_validate_graduation_year_invalid_less_than_1900(
-        self, value: int
-    ) -> None:
-        """Проверяет, что validate_graduation_year выбрасывает.
-
-        ValueError для года < 1900.
-        """
-        with pytest.raises(expected_exception=ValueError):
-            validate_graduation_year(value=value)
-
-    def test_validate_graduation_year_invalid_future(self) -> None:
-        """Проверяет, что validate_graduation_year выбрасывает.
-
-        ValueError для будущего года.
-        """
-        future_year = date.today().year + 1
-        with pytest.raises(expected_exception=ValueError):
-            validate_graduation_year(value=future_year)
-
-
-class TestValidateBirthDate:
-    """Тесты для валидатора validate_birth_date."""
-
-    def test_validate_birth_date_valid(self) -> None:
-        """Проверяет, что validate_birth_date возвращает дату."""
-        value = date(1990, 1, 1)
-        result = validate_birth_date(birthday=value)
-        assert_that(
-            actual_or_assertion=result,
-            matcher=equal_to(obj=value),
-        )
-
-    def test_validate_birth_date_invalid_future(self) -> None:
-        """Проверяет, что validate_birth_date выбрасывает.
-
-        ValueError для будущей даты.
-        """
-        future_date = date.today().replace(year=date.today().year + 1)
-        with pytest.raises(expected_exception=ValueError):
-            validate_birth_date(birthday=future_date)
-
-    def test_validate_birth_date_invalid_young(self) -> None:
-        """Проверяет, что validate_birth_date выбрасывает.
-
-        ValueError для возраста < 16 лет.
-        """
-        young_date = date.today().replace(year=date.today().year - 15)
-        with pytest.raises(expected_exception=ValueError):
-            validate_birth_date(birthday=young_date)
-
-
-class TestValidateTelegramNickname:
-    """Тесты для валидатора validate_telegram_nickname."""
-
-    @pytest.mark.parametrize(
-        argnames='value',
-        argvalues=['@username', '@test123', '@user_name'],
-    )
-    def test_validate_telegram_nickname_valid(self, value: str) -> None:
-        """Проверяет, что validate_telegram_nickname возвращает никнейм."""
-        result = validate_telegram_nickname(value=value)
-        assert_that(
-            actual_or_assertion=result,
-            matcher=equal_to(obj=value),
-        )
-
-    @pytest.mark.parametrize(
-        argnames='value',
-        argvalues=['@usr', 'user', '@user@name', '@user!name'],
-    )
-    def test_validate_telegram_nickname_invalid(self, value: str) -> None:
-        """Проверяет, что validate_telegram_nickname выбрасывает ValueError."""
-        with pytest.raises(expected_exception=ValueError):
-            validate_telegram_nickname(value=value)
-
-
-class TestValidateTitleSymbols:
-    """Тесты для валидатора validate_title_symbols."""
+class TestCheckSymbolsNumericSpacesSpecialChar:
+    """Тесты для валидатора check_symbols_numeric_spaces_special_char."""
 
     @pytest.mark.parametrize(
         argnames='value',
         argvalues=[
-            'Резюме разработчика',
-            'Resume Title 1.0',
-            'Title (with) brackets',
-            'Title with/slash',
+            'Umbra GmbH',
+            '№12: Foo-Bar (A/B), 3.5.',
+            'Строка с числами 123 и знаками .,/-(): №',
+            'simple / test - ok.',
         ],
     )
-    def test_validate_title_symbols_valid(self, value: str) -> None:
-        """Проверяет, что validate_title_symbols возвращает строку."""
-        result = validate_title_symbols(value=value)
+    def test_valid(self, value: str) -> None:
+        """Проверяет, что валидные строки проходят валидацию.
+
+        Args:
+            value: Валидная строка
+        """
+        result = check_symbols_numeric_spaces_special_char(value=value)
         assert_that(
             actual_or_assertion=result,
             matcher=equal_to(obj=value.strip()),
@@ -633,12 +722,190 @@ class TestValidateTitleSymbols:
     @pytest.mark.parametrize(
         argnames='value',
         argvalues=[
-            'Title with @ symbol',
-            'Title with ! symbol',
-            'Title with _ underscore',
+            'underscore_is_bad_',
+            'bang!not allowed',
+            'email@test.com?',
         ],
     )
-    def test_validate_title_symbols_invalid(self, value: str) -> None:
-        """Проверяет, что validate_title_symbols выбрасывает ValueError."""
+    def test_invalid(self, value: str) -> None:
+        """Проверяет, что невалидные строки вызывают ValueError.
+
+        Args:
+            value: Невалидная строка
+
+        Raises:
+            ValueError: Если встречаются неразрешённые символы
+        """
         with pytest.raises(expected_exception=ValueError):
-            validate_title_symbols(value=value)
+            check_symbols_numeric_spaces_special_char(value=value)
+
+
+class TestCheckHiddenOrSpaces:
+    """Тесты для валидатора check_hidden_or_spaces."""
+
+    @pytest.mark.parametrize(
+        argnames='value',
+        argvalues=[
+            'no_spaces',
+            'tabless',
+            'newline',
+        ],
+    )
+    def test_false(self, value: str) -> None:
+        """Проверяет, что при отсутствии пробельных символов возвращает False.
+
+        Args:
+            value: Строка без пробельных символов
+        """
+        result = check_hidden_or_spaces(string=value)
+        assert_that(
+            actual_or_assertion=result,
+            matcher=equal_to(obj=False),
+        )
+
+    @pytest.mark.parametrize(
+        argnames='value',
+        argvalues=[
+            'has space',
+            'line\nbreak',
+            'tab\there',
+            ' start',
+            'end ',
+        ],
+    )
+    def test_true(self, value: str) -> None:
+        """Проверяет, что при пробелах/скрытых символах возвращает True.
+
+        Args:
+            value: Строка с пробелами или скрытыми символами
+        """
+        result = check_hidden_or_spaces(string=value)
+        assert_that(
+            actual_or_assertion=result,
+            matcher=equal_to(obj=True),
+        )
+
+
+class TestParseYearMonthStrict:
+    """Тесты для валидатора parse_year_month_strict."""
+
+    @pytest.mark.parametrize(
+        argnames='value,expected',
+        argvalues=[
+            (
+                '2020-01',
+                date(year=2020, month=1, day=1),
+            ),
+            (
+                '1999-12',
+                date(year=1999, month=12, day=1),
+            ),
+        ],
+    )
+    def test_valid(self, value: str, expected: date) -> None:
+        """Проверяет корректный парсинг формата YYYY-MM.
+
+        Args:
+            value: Входная строка
+            expected: Ожидаемая дата
+        """
+        result = parse_year_month_strict(value=value)
+        assert_that(
+            actual_or_assertion=result,
+            matcher=equal_to(obj=expected),
+        )
+
+    @pytest.mark.parametrize(
+        argnames='value',
+        argvalues=[
+            '2020-13',
+            '2020-00',
+            '20-01',
+            '2020/01',
+            '2020-1',
+            ' 2020-01',
+            '2020-01 ',
+        ],
+    )
+    def test_invalid_format(self, value: str) -> None:
+        """Проверяет ошибки формата.
+
+        Args:
+            value: Некорректная строка
+
+        Raises:
+            ValueError: При несоответствии строгому формату YYYY-MM
+        """
+        with pytest.raises(expected_exception=ValueError):
+            parse_year_month_strict(value=value)
+
+    @freeze_time('2025-03-10')
+    def test_future_month_invalid(self) -> None:
+        """Проверяет, что будущая дата не допускается.
+
+        Raises:
+            ValueError: Если дата в будущем (после текущего месяца)
+        """
+        with pytest.raises(ValueError):
+            parse_year_month_strict(value='2025-04')
+
+    def test_year_too_small_invalid(self) -> None:
+        """Проверяет нижнюю границу года (>= 1900).
+
+        Raises:
+            ValueError: Если год меньше 1900
+        """
+        with pytest.raises(expected_exception=ValueError):
+            parse_year_month_strict(value='1899-12')
+
+
+class TestValidateYearMonthOrder:
+    """Тесты для валидатора validate_year_month_order."""
+
+    def test_valid_none_end(self) -> None:
+        """Проверяет, что end=None допускается.
+
+        Никаких исключений выброшено быть не должно.
+        """
+        start = date(
+            year=2020,
+            month=1,
+            day=1,
+        )
+        validate_year_month_order(start=start, end=None)
+
+    def test_valid_end_after_start(self) -> None:
+        """Проверяет допустимый порядок: end >= start."""
+        start = date(
+            year=2020,
+            month=1,
+            day=1,
+        )
+        end = date(
+            year=2020,
+            month=1,
+            day=1,
+        )
+        validate_year_month_order(start=start, end=end)
+
+    def test_invalid_end_before_start(self) -> None:
+        """Проверяет, что end < start вызывает ValueError.
+
+        Raises:
+            ValueError: Если дата окончания меньше даты начала
+        """
+        start = date(
+            year=2020,
+            month=2,
+            day=1,
+        )
+        end = date(
+            year=2020,
+            month=1,
+            day=1,
+        )
+        with pytest.raises(expected_exception=ValueError):
+            validate_year_month_order(
+                start=start,
+                end=end,
+            )

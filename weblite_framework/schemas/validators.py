@@ -1,121 +1,143 @@
-"""Модуль с кастомными валидаторами для проекта."""
+"""Данный модуль добавляет общие кастомные валидаторы."""
 
 import re
 from datetime import date, datetime
+from functools import wraps
+from typing import Callable, Optional, cast
 
 __all__ = [
-    'validate_filename',
+    'skip_if_none',
     'check_not_empty',
-    'check_max_length_255',
-    'check_max_length_1000',
+    'check_length',
     'check_only_symbols',
     'check_only_symbols_and_spaces',
-    'check_email_pattern',
     'check_russian_phone_number',
+    'check_email_pattern',
     'check_no_html_scripts',
     'check_has_timezone',
     'check_integer',
     'check_positive_num',
     'check_no_double_spaces',
-    'check_empty_to_none',
-    'validate_graduation_year',
-    'validate_birth_date',
-    'validate_telegram_nickname',
-    'validate_title_symbols',
+    'check_symbols_numeric_spaces_special_char',
+    'check_hidden_or_spaces',
+    'parse_year_month_strict',
+    'validate_year_month_order',
 ]
 
+from typing_extensions import Protocol
 
-def validate_filename(filename: str) -> str:
-    """Проверяет, что имя файла непустое.
+
+class _StringValidator(Protocol):
+    """Протокол для функций-валидаторов строк."""
+
+    def __call__(
+        self,
+        value: Optional[str],
+        *args: object,
+        **kwargs: object,
+    ) -> Optional[str]: ...
+
+
+def skip_if_none(func: Callable[..., str]) -> _StringValidator:
+    """Декоратор для строковых валидаторов: если value is None — вернуть None.
 
     Args:
-        filename: Имя файла.
+        func: Функция-валидатор, принимающая строку и
+            возвращающая проверенную строку
 
     Returns:
-        str: То же имя файла, если проверка пройдена
-
-    Raises:
-        ValueError: Если имя файла пустое.
+        Обёрнутый валидатор, который:
+            - возвращает None, если вход — None;
+            - иначе вызывает исходную функцию
     """
-    if not filename:
-        raise ValueError('filename is required')
-    return filename
+
+    @wraps(func)
+    def wrapper(
+        value: Optional[str],
+        *args: object,
+        **kwargs: object,
+    ) -> Optional[str]:
+        if value is None:
+            return None
+        return func(value=value, *args, **kwargs)
+
+    return cast(_StringValidator, wrapper)
 
 
+@skip_if_none
 def check_not_empty(value: str) -> str:
-    """Проверяет поле на пустое значение.
+    """Проверяет строку на непустоту и возвращает обрезанную строку.
 
     Args:
-        value: Проверяемые данные
+        value: Проверяемая строка
 
     Returns:
-        value: Данные, прошедшие валидацию
+        str: Обрезанная (strip) и валидная строка
 
     Raises:
-        ValueError: Ошибка в случае непрохождения валидации
+        ValueError: Если строка пустая после trim
     """
     if not value or value.strip() == '':
         raise ValueError('Поле не может быть пустым')
     return value.strip()
 
 
-def check_max_length_255(value: str) -> str:
-    """Проверяет поле на длину не более 255 символов.
+@skip_if_none
+def check_length(
+    value: str,
+    min_length: int = 1,
+    max_length: int = 255,
+) -> str:
+    """Проверяет строку на соответствие минимальной и максимальной длине.
 
     Args:
-        value: Проверяемые данные
+        value: Проверяемая строка
+        min_length: Минимально допустимая длина (по умолчанию 1)
+        max_length: Максимально допустимая длина (по умолчанию 255)
 
     Returns:
-        value: Данные, прошедшие валидацию
+        str: Очищенная строка, прошедшая валидацию
 
     Raises:
-        ValueError: Ошибка в случае непрохождения валидации
+        ValueError: Если строка не соответствует ограничениям
     """
-    if value and len(value.strip()) > 255:
-        raise ValueError('Длина поля не должна превышать 255 символов')
-    return value.strip()
+    value = value.strip()
+    length = len(value)
+
+    if length < min_length:
+        raise ValueError(
+            f'Длина поля должна быть не менее {min_length} символов',
+        )
+    if length > max_length:
+        raise ValueError(
+            f'Длина поля не должна превышать {max_length} символов',
+        )
+
+    return value
 
 
-def check_max_length_1000(value: str) -> str:
-    """Проверяет поле на длину не более 1000 символов.
-
-    Args:
-        value: Проверяемые данные
-
-    Returns:
-        value: Данные, прошедшие валидацию
-
-    Raises:
-        ValueError: Ошибка в случае непрохождения валидации
-    """
-    if value and len(value.strip()) > 1000:
-        raise ValueError('Длина поля не должна превышать 1000 символов')
-    return value.strip()
-
-
+@skip_if_none
 def check_only_symbols(value: str) -> str:
     """Проверяет поле на наличие только символов (латиница/кириллица).
 
     Args:
-        value: Проверяемые данные
+        value: Проверяемая строка
 
     Returns:
-        value: Данные, прошедшие валидацию
+        str: Исходная строка при успешной валидации
 
     Raises:
-        ValueError: Ошибка в случае непрохождения валидации
+        ValueError: Если присутствуют любые символы, кроме букв
     """
-    pattern = r'^[a-zA-Zа-яА-яеЁ]+$'
-    if value and not re.fullmatch(
-        pattern=pattern,
-        string=value,
-    ):
+    pattern = r'^[a-zA-Zа-яА-ЯёЁ]+$'
+    if value and not re.fullmatch(pattern=pattern, string=value):
         raise ValueError(
             'Поле может состоять только из букв (латиница/кириллица)',
         )
     return value
 
 
+@skip_if_none
 def check_only_symbols_and_spaces(value: str) -> str:
     """Проверяет поле на наличие символов (латиница/кириллица) и пробелов.
 
@@ -128,18 +150,16 @@ def check_only_symbols_and_spaces(value: str) -> str:
     Raises:
         ValueError: Ошибка в случае непрохождения валидации
     """
-    pattern = r'^[a-zA-Zа-яА-ЯеЁ\s]+$'
-    if value and not re.fullmatch(
-        pattern=pattern,
-        string=value,
-    ):
+    pattern = r'^[a-zA-Zа-яА-ЯёЁ\s]+$'
+    if value and not re.fullmatch(pattern=pattern, string=value):
         raise ValueError(
-            'Поле может состоять только из букв (латиница/кириллица) '
-            'и пробелов',
+            'Поле может состоять только из букв '
+            '(латиница/кириллица) и пробелов',
         )
     return value.strip()
 
 
+@skip_if_none
 def check_email_pattern(value: str) -> str:
     """Проверяет email на соответствие шаблону электронной почты.
 
@@ -152,15 +172,13 @@ def check_email_pattern(value: str) -> str:
     Raises:
         ValueError: Ошибка в случае непрохождения валидации
     """
-    pattern = r'(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)'
-    if not re.match(
-        pattern=pattern,
-        string=value,
-    ):
+    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    if not re.match(pattern=pattern, string=value):
         raise ValueError('Неверный формат email')
     return value
 
 
+@skip_if_none
 def check_russian_phone_number(value: str) -> str:
     """Проверяет номер телефона на соответствие телефона РФ.
 
@@ -175,18 +193,14 @@ def check_russian_phone_number(value: str) -> str:
     """
     if value:
         pattern = r'^\+7([\d]{10})$'
-        if not (
-            re.fullmatch(
-                pattern=pattern,
-                string=value,
-            )
-        ):
+        if not re.fullmatch(pattern=pattern, string=value):
             raise ValueError(
                 'Неверный формат номера телефона. Формат: +7XXXXXXXXXX',
             )
     return value
 
 
+@skip_if_none
 def check_no_html_scripts(value: str) -> str:
     """Проверяет наличие html скриптов.
 
@@ -203,7 +217,7 @@ def check_no_html_scripts(value: str) -> str:
         pattern=r'<\s*[a-z][\s\S]*>|</\s*[a-z][\s\S]*>',
         flags=re.IGNORECASE,
     )
-    if value and html_pattern.search(value):
+    if value and html_pattern.search(string=value):
         raise ValueError('Текст должен быть без HTML/скриптов')
     return value.strip()
 
@@ -261,136 +275,110 @@ def check_positive_num(value: int | float) -> int | float:
     return value
 
 
+@skip_if_none
 def check_no_double_spaces(value: str) -> str:
     """Проверяет, что в строке нет двух и более пробелов подряд.
 
     Args:
-        value: Проверяемая строка
+        value: Проверяемая строка.
 
     Returns:
-        str: Та же строка, если проверка пройдена
+        str: Обрезанная и валидная строка
 
     Raises:
-        ValueError: Если внутри строки встречаются два и более пробела подряд
+        ValueError: Если найдены два и более пробела подряд
     """
     value = value.strip()
     if '  ' in value:
-        raise ValueError(
-            'Строка не может содержать более 2 пробелов подряд',
-        )
+        raise ValueError('Строка не может содержать более 2 пробелов подряд')
     return value
 
 
-def check_empty_to_none(value: str | None) -> str | None:
-    """Пустая строка преобразуется в None, непустая — strip().
+@skip_if_none
+def check_symbols_numeric_spaces_special_char(value: str) -> str:
+    """Проверяет строку на допустимые символы.
 
     Args:
-        value: Проверяемые данные
+        value: Проверяемая строка.
 
     Returns:
-        str | None: None для пустых значений, иначе — strip() обрезанная строка
-    """
-    if value is None:
-        return None
-    s = value.strip()
-    return None if s == '' else s
-
-
-def validate_graduation_year(value: int) -> int:
-    """Проверяет год окончания учебного заведения на корректность.
-
-    Args:
-        value: Проверяемый год
-
-    Returns:
-        int: Год, прошедший валидацию
+        str: Обрезанная и валидная строка
 
     Raises:
-        ValueError: Ошибка в случае непрохождения валидации
+        ValueError: Если встречены недопустимые символы
     """
-    if not value or value < 1900:
-        raise ValueError('Год окончания не может быть меньше 1900')
-    if value > date.today().year:
-        raise ValueError('Год окончания не может быть в будущем')
-    return value
-
-
-def validate_birth_date(birthday: date) -> date:
-    """Проверяет дату рождения на корректность.
-
-    Args:
-        birthday: Проверяемая дата рождения
-
-    Returns:
-        date: Дата рождения
-
-    Raises:
-        ValueError: Ошибка в случае непрохождения валидации
-    """
-    today = date.today()
-    if birthday > today:
-        raise ValueError('Дата рождения не может быть в будущем')
-
-    age_delta = (today.month, today.day) < (birthday.month, birthday.day)
-    age = today.year - birthday.year - age_delta
-
-    if age < 16:
-        raise ValueError('Возраст должен быть не младше 16 лет')
-    return birthday
-
-
-def validate_telegram_nickname(value: str) -> str:
-    """Проверяет Telegram-ник на соответствие шаблону.
-
-    Args:
-        value: Проверяемый никнейм
-
-    Returns:
-        str: Прошедший валидацию Telegram-ник
-
-    Raises:
-        ValueError: Ошибка в случае непрохождения валидации
-    """
-    if value:
-        pattern = r'^@[\da-zA-Z_]+$'
-        if len(value) < 5:
-            raise ValueError(
-                'Telegram-ник должен быть не короче 5 символов',
-            )
-        if len(value) > 32:
-            raise ValueError(
-                'Telegram-ник должен быть не длиннее 32 символов',
-            )
-        if not re.fullmatch(pattern=pattern, string=value):
-            raise ValueError(
-                'Неверный формат. Должен начинаться с @, '
-                'допустимы буквы, цифры, нижнее подчёркивание.',
-            )
-    return value
-
-
-def validate_title_symbols(value: str) -> str:
-    """Проверяет название резюме на допустимые символы.
-
-    Допустимые символы: буквы, цифры, пробелы и [. , / - ( ) № :]
-
-    Args:
-        value: Проверяемое название резюме
-
-    Returns:
-        str: Прошедшее валидацию название
-
-    Raises:
-        ValueError: Ошибка в случае непрохождения валидации
-    """
-    value = value.strip()
-
     pattern = r'^[a-zA-Zа-яА-ЯёЁ0-9\s.,/\-\(\)№:]+$'
-    if not re.fullmatch(pattern=pattern, string=value):
+    if value and not re.fullmatch(pattern=pattern, string=value):
         raise ValueError(
-            'Название резюме может содержать только буквы '
-            '(латиница/кириллица), цифры, пробелы и спецсимволы: '
-            '[. , / - ( ) № :]'
+            'Поле может содержать только буквы (латиница/кириллица), '
+            'цифры, пробелы и спецсимволы: [. , / - ( ) № :]',
+        )
+    return value.strip()
+
+
+def check_hidden_or_spaces(string: str) -> bool:
+    """Проверяет наличие пробельных или скрытых символов в строке.
+
+    Args:
+        string: Проверяемая строка
+
+    Returns:
+        bool: True, если найден хотя бы один пробельный символ, иначе False
+    """
+    return any(ch.isspace() for ch in string)
+
+
+def parse_year_month_strict(value: str) -> date:
+    """Парсит 'YYYY-MM' в date(YYYY, MM, 1) с жёсткой валидацией.
+
+    Args:
+        value: Строка формата YYYY-MM (строго)
+
+    Returns:
+        date: Дата с днём, выставленным в 1 число месяца
+
+    Raises:
+        ValueError: При несоответствии формату или недопустимых значениях
+    """
+    year_month_re = re.compile(r'^\d{4}-(0[1-9]|1[0-2])$')
+
+    if check_hidden_or_spaces(value):
+        raise ValueError(
+            'Дата не должна содержать пробелы или скрытые символы',
         )
 
-    return value
+    if len(value) != 7 or not year_month_re.fullmatch(value):
+        raise ValueError('Неверный формат даты: ожидается строго YYYY-MM')
+
+    year_s, month_s = value.split('-')
+    year = int(year_s)
+    month = int(month_s)
+
+    if year < 1900:
+        raise ValueError('Год должен быть не меньше 1900')
+
+    today = date.today()
+    if (year, month) > (today.year, today.month):
+        raise ValueError(
+            'Дата не может быть в будущем (позже текущего месяца)',
+        )
+
+    return date(
+        year=year,
+        month=month,
+        day=1,
+    )
+
+
+def validate_year_month_order(start: date, end: date | None) -> None:
+    """Проверяет, что end не раньше start.
+
+    Args:
+        start: Дата начала
+        end: Дата окончания (или None)
+
+    Raises:
+        ValueError: Если end указана и меньше start
+    """
+    if end is not None and end < start:
+        raise ValueError('end_date не может быть раньше start_date')
