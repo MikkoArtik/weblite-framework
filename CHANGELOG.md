@@ -24,6 +24,13 @@
 - Класс `CommonRepo` для проверки соединения с базой данных;
 - Метод `_is_connection_exist` в `BaseRepositoryClass` для проверки соединения с базой данных;
 
+
+### Добавлено
+
+-Модуль кастомных валидаторов weblite_framework/schemas/validators.py 
+-Тесты кастомных валидаторов tests/schemas/test_validators.py
+-Вспомогательные функции для тестирования tests/schemas/helpers.py
+
 ## [0.1.0]
 
 ### Добавлено
