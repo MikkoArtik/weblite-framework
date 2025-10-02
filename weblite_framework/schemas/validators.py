@@ -30,6 +30,7 @@ from typing_extensions import Protocol
 class _StringValidator(Protocol):
     """Протокол для функций-валидаторов строк."""
 
+    # fmt: off
     def __call__(
         self,
         value: Optional[str],
@@ -37,6 +38,7 @@ class _StringValidator(Protocol):
         **kwargs: object,
     ) -> Optional[str]:
         ...
+    # fmt: on
 
 
 def skip_if_none(func: Callable[..., str]) -> _StringValidator:
