@@ -15,7 +15,7 @@
 |  Исправлено  | Исправлен баг.                                                         |
 | Безопасность | Выявлена уязвимость.                                                   |
 
-## [0.2.0]
+## [Unrealised]
 
 ### Добавлено
 - Сервисный слой для проверки работоспособности сервиса (`HealthService`) в пакет `weblite_framework/service/health.py`;
@@ -23,6 +23,12 @@
 - Исключения `ServiceHealthError` и `DatabaseConnectionError` для обработки ошибок соединения;
 - Класс `CommonRepo` для проверки соединения с базой данных;
 - Метод `_is_connection_exist` в `BaseRepositoryClass` для проверки соединения с базой данных;
+- Юнит-тесты для метода `_is_connection_exist` (успешное соединение и ошибка `InterfaceError`);
+- Вспомогательные классы для тестов репозитория (`SampleModel`, `SampleDTO`, `SampleRepo`);
+
+### Изменено
+- Переименован `_get_session_for_testing` в `_session` (теперь это свойство)
+- Тест `test_initialization` в `test_base.py` обновлён на использование свойства `_session`.
 
 
 ### Добавлено

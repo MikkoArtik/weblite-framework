@@ -29,7 +29,8 @@ class BaseRepositoryClass(Generic[DTO, SQLModel], ABC):
         """
         self.__session = session
 
-    def _get_session_for_testing(self) -> AsyncSession:
+    @property
+    def _session(self) -> AsyncSession:
         """Возвращает сессию для тестирования.
 
         Returns:
