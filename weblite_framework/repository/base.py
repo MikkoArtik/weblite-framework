@@ -1,9 +1,11 @@
 """Модуль базового репозитория для работы с БД."""
 
 from abc import ABC, abstractmethod
+from socket import gaierror
 from typing import Any, Generic, TypeVar
 
-from sqlalchemy import Executable, Result
+from sqlalchemy import Executable, Result, text
+from sqlalchemy.exc import InterfaceError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from weblite_framework.database.models import BaseModel
@@ -27,7 +29,8 @@ class BaseRepositoryClass(Generic[DTO, SQLModel], ABC):
         """
         self.__session = session
 
-    def _get_session_for_testing(self) -> AsyncSession:
+    @property
+    def session(self) -> AsyncSession:
         """Возвращает сессию для тестирования.
 
         Returns:
@@ -223,3 +226,19 @@ class BaseRepositoryClass(Generic[DTO, SQLModel], ABC):
         except Exception as e:
             await self.__session.rollback()
             raise e
+
+    async def _is_connection_exist(self) -> bool:
+        """Проверяет соединение с базой данных.
+
+        Returns:
+            bool: True, если соединение успешно, иначе False.
+        """
+        try:
+            await self.execute(
+                statement=text(text='SELECT 1'),
+                is_use_active_transaction=False,
+            )
+        except (InterfaceError, gaierror):
+            return False
+        else:
+            return True
