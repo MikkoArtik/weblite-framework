@@ -24,7 +24,7 @@ class TestBaseRepository:
 
         # Проверяем, что сессия правильно присвоена
         assert_that(
-            actual_or_assertion=repo._session,
+            actual_or_assertion=repo.session,
             matcher=equal_to(obj=session),
         )
 

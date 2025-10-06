@@ -27,8 +27,8 @@
 - Вспомогательные классы для тестов репозитория (`SampleModel`, `SampleDTO`, `SampleRepo`);
 
 ### Изменено
-- Переименован `_get_session_for_testing` в `_session` (теперь это свойство)
-- Тест `test_initialization` в `test_base.py` обновлён на использование свойства `_session`.
+- Переименован `_get_session_for_testing` в `session` (теперь это публичное свойство)
+- Тест `test_initialization` в `test_base.py` обновлён на использование свойства `session`.
 
 ## [0.1.0]
 
