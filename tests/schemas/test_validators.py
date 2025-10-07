@@ -30,6 +30,20 @@ from weblite_framework.schemas.validators import (
 class TestSkipIfNone:
     """Тесты для декоратора skip_if_none."""
 
+    def failing_validator(self, value: str) -> str:
+        """Вспомогательный валидатор, который всегда выбрасывает исключение.
+
+        Args:
+            value: Входное значение
+
+        Returns:
+            str: Никогда не возвращает значение
+
+        Raises:
+            ValueError: Всегда выбрасывает исключение
+        """
+        raise ValueError("Test exception")
+
     @pytest.mark.parametrize(
         argnames='inp, expected',
         argvalues=[
@@ -38,9 +52,9 @@ class TestSkipIfNone:
         ],
     )
     def test_skip_if_none_basic(
-        self,
-        inp: str | None,
-        expected: str | None,
+            self,
+            inp: str | None,
+            expected: str | None,
     ) -> None:
         """Проверяет базовое поведение декоратора skip_if_none.
 

@@ -59,6 +59,6 @@
 - Тесты кастомных валидаторов tests/schemas/test_validators.py;
 - Вспомогательные функции для тестирования tests/schemas/helpers.py;
 - Добавлена библиотека freezegun в раздел tool.poetry.group.test.dependencies;
-- Добавлена библиотека virtualenv = "20.31.2" в раздел tool.poetry.dependencies;
+- Добавлена библиотека virtualenv в раздел tool.poetry.group.test.dependencies;
 
 
