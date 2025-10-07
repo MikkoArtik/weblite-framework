@@ -16,6 +16,7 @@ sqlalchemy = {extras = ["asyncio"], version = "2.0.36"}
 pytest = "8.4.1"
 pytest-asyncio = "1.1.0"
 pyhamcrest = "2.1.0"
+freezegun = "1.5.5"
 
 [tool.poetry.group.lint.dependencies]
 isort = "6.0.1"
