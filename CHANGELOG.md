@@ -15,7 +15,7 @@
 |  Исправлено  | Исправлен баг.                                                         |
 | Безопасность | Выявлена уязвимость.                                                   |
 
-## [Unrealised]
+## [0.2.0]
 
 ### Добавлено
 - Сервисный слой для проверки работоспособности сервиса (`HealthService`) в пакет `weblite_framework/service/health.py`;
@@ -27,15 +27,8 @@
 - Вспомогательные классы для тестов репозитория (`SampleModel`, `SampleDTO`, `SampleRepo`);
 
 ### Изменено
-- Переименован `_get_session_for_testing` в `_session` (теперь это свойство)
-- Тест `test_initialization` в `test_base.py` обновлён на использование свойства `_session`.
-
-
-### Добавлено
-
--Модуль кастомных валидаторов weblite_framework/schemas/validators.py 
--Тесты кастомных валидаторов tests/schemas/test_validators.py
--Вспомогательные функции для тестирования tests/schemas/helpers.py
+- Переименован `_get_session_for_testing` в `session` (теперь это публичное свойство)
+- Тест `test_initialization` в `test_base.py` обновлён на использование свойства `session`.
 
 ## [0.1.0]
 
@@ -62,4 +55,10 @@
 - isort с трейлинговыми запятыми, многолинейным выводом и длиной строки 79;
 - mypy с строгой проверкой, поддержкой плагина pydantic;
 - Базовые файлы проекта;
+- Модуль кастомных валидаторов weblite_framework/schemas/validators.py; 
+- Тесты кастомных валидаторов tests/schemas/test_validators.py;
+- Вспомогательные функции для тестирования tests/schemas/helpers.py;
+- Добавлена библиотека freezegun в раздел tool.poetry.group.test.dependencies;
+- Добавлена библиотека virtualenv = "20.31.2" в раздел tool.poetry.dependencies;
+
 

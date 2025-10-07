@@ -3,7 +3,7 @@
 import re
 from datetime import date, datetime
 from functools import wraps
-from typing import Callable, Optional, cast
+from typing import Callable, Optional
 
 __all__ = [
     'skip_if_none',
@@ -21,27 +21,10 @@ __all__ = [
     'check_symbols_numeric_spaces_special_char',
     'check_hidden_or_spaces',
     'parse_year_month_strict',
-    'validate_year_month_order',
 ]
 
-from typing_extensions import Protocol
 
-
-class _StringValidator(Protocol):
-    """Протокол для функций-валидаторов строк."""
-
-    # fmt: off
-    def __call__(
-        self,
-        value: Optional[str],
-        *args: object,
-        **kwargs: object,
-    ) -> Optional[str]:
-        ...
-    # fmt: on
-
-
-def skip_if_none(func: Callable[..., str]) -> _StringValidator:
+def skip_if_none(func: Callable[..., str]) -> Callable[..., Optional[str]]:
     """Декоратор для строковых валидаторов: если value is None — вернуть None.
 
     Args:
@@ -64,7 +47,7 @@ def skip_if_none(func: Callable[..., str]) -> _StringValidator:
             return None
         return func(value=value, *args, **kwargs)
 
-    return cast(_StringValidator, wrapper)
+    return wrapper
 
 
 @skip_if_none
@@ -293,7 +276,9 @@ def check_no_double_spaces(value: str) -> str:
     """
     value = value.strip()
     if '  ' in value:
-        raise ValueError('Строка не может содержать более 2 пробелов подряд')
+        raise ValueError(
+            'Строка не может содержать более одного пробела подряд'
+        )
     return value
 
 
@@ -371,17 +356,3 @@ def parse_year_month_strict(value: str) -> date:
         month=month,
         day=1,
     )
-
-
-def validate_year_month_order(start: date, end: date | None) -> None:
-    """Проверяет, что end не раньше start.
-
-    Args:
-        start: Дата начала
-        end: Дата окончания (или None)
-
-    Raises:
-        ValueError: Если end указана и меньше start
-    """
-    if end is not None and end < start:
-        raise ValueError('end_date не может быть раньше start_date')

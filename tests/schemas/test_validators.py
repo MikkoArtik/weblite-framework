@@ -7,7 +7,7 @@ import pytest
 from freezegun import freeze_time
 from hamcrest import assert_that, equal_to
 
-from tests.schemas.helpers import add_brackets, always_fails
+from tests.schemas.helpers import add_brackets
 from weblite_framework.schemas.validators import (
     check_email_pattern,
     check_has_timezone,
@@ -24,7 +24,6 @@ from weblite_framework.schemas.validators import (
     check_symbols_numeric_spaces_special_char,
     parse_year_month_strict,
     skip_if_none,
-    validate_year_month_order,
 )
 
 
@@ -60,7 +59,7 @@ class TestSkipIfNone:
 
     def test_propagates_exceptions_from_wrapped(self) -> None:
         """Исключения исходной функции пробрасываются наружу."""
-        wrapped = skip_if_none(func=always_fails)
+        wrapped = skip_if_none(func=self.failing_validator)
         with pytest.raises(expected_exception=ValueError):
             wrapped(value='x')
 
@@ -857,55 +856,3 @@ class TestParseYearMonthStrict:
         """
         with pytest.raises(expected_exception=ValueError):
             parse_year_month_strict(value='1899-12')
-
-
-class TestValidateYearMonthOrder:
-    """Тесты для валидатора validate_year_month_order."""
-
-    def test_valid_none_end(self) -> None:
-        """Проверяет, что end=None допускается.
-
-        Никаких исключений выброшено быть не должно.
-        """
-        start = date(
-            year=2020,
-            month=1,
-            day=1,
-        )
-        validate_year_month_order(start=start, end=None)
-
-    def test_valid_end_after_start(self) -> None:
-        """Проверяет допустимый порядок: end >= start."""
-        start = date(
-            year=2020,
-            month=1,
-            day=1,
-        )
-        end = date(
-            year=2020,
-            month=1,
-            day=1,
-        )
-        validate_year_month_order(start=start, end=end)
-
-    def test_invalid_end_before_start(self) -> None:
-        """Проверяет, что end < start вызывает ValueError.
-
-        Raises:
-            ValueError: Если дата окончания меньше даты начала
-        """
-        start = date(
-            year=2020,
-            month=2,
-            day=1,
-        )
-        end = date(
-            year=2020,
-            month=1,
-            day=1,
-        )
-        with pytest.raises(expected_exception=ValueError):
-            validate_year_month_order(
-                start=start,
-                end=end,
-            )
