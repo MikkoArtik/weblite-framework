@@ -55,4 +55,10 @@
 - isort с трейлинговыми запятыми, многолинейным выводом и длиной строки 79;
 - mypy с строгой проверкой, поддержкой плагина pydantic;
 - Базовые файлы проекта;
+- Модуль кастомных валидаторов weblite_framework/schemas/validators.py; 
+- Тесты кастомных валидаторов tests/schemas/test_validators.py;
+- Вспомогательные функции для тестирования tests/schemas/helpers.py;
+- Добавлена библиотека freezegun в раздел tool.poetry.group.test.dependencies;
+- Добавлена библиотека virtualenv = "20.31.2" в раздел tool.poetry.dependencies;
+
 
