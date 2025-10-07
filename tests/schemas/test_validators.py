@@ -50,7 +50,6 @@ class TestSkipIfNone:
             inp: Входное значение
             expected: Ожидаемый результат после применения декоратора
         """
-        # Вместо вызова add_brackets используем inline функцию
         def add_brackets_func(value: str) -> str:
             return f'[{value}]'
 
