@@ -15,6 +15,27 @@
 |  Исправлено  | Исправлен баг.                                                         |
 | Безопасность | Выявлена уязвимость.                                                   |
 
+## [0.3.0]
+
+### Добавлено
+- Модуль кастомных валидаторов `weblite_framework/schemas/validators.py`; 
+- Тесты кастомных валидаторов `tests/schemas/test_validators.py`;
+- Библиотека freezegun в раздел `tool.poetry.group.test.dependencies`;
+
+## [0.2.0]
+
+### Добавлено
+- Сервисный слой для проверки работоспособности сервиса (`HealthService`) в пакет `weblite_framework/service/health.py`;
+- Юнит-тесты для `HealthService` с проверкой различных сценариев работоспособности;
+- Исключения `ServiceHealthError` и `DatabaseConnectionError` для обработки ошибок соединения;
+- Класс `CommonRepo` для проверки соединения с базой данных;
+- Метод `_is_connection_exist` в `BaseRepositoryClass` для проверки соединения с базой данных;
+- Юнит-тесты для метода `_is_connection_exist` (успешное соединение и ошибка `InterfaceError`);
+- Вспомогательные классы для тестов репозитория (`SampleModel`, `SampleDTO`, `SampleRepo`);
+
+### Изменено
+- Переименован `_get_session_for_testing` в `session` (теперь это публичное свойство)
+- Тест `test_initialization` в `test_base.py` обновлён на использование свойства `session`.
 
 ## [0.1.0]
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "weblite_framework"
-version = "0.1.0"
+version = "0.3.0"
 description = ""
 authors = ["Чернов Михаил <mihail.tchernov@yandex.ru>"]
 readme = "README.md"
@@ -17,6 +17,7 @@ fastapi = "0.118.0"
 pytest = "8.4.1"
 pytest-asyncio = "1.1.0"
 pyhamcrest = "2.1.0"
+freezegun = "1.5.5"
 
 [tool.poetry.group.lint.dependencies]
 isort = "6.0.1"
@@ -32,7 +33,7 @@ mypy = "1.17.1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "4.3.0"
-twine = "6.1.0"
+twine = "6.2.0"
 
 [tool.pytest.ini_options]
 addopts = "-ra -q"

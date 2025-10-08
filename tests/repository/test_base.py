@@ -3,9 +3,11 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from hamcrest import assert_that, equal_to, greater_than_or_equal_to
+from hamcrest import assert_that, equal_to, greater_than_or_equal_to, is_
+from sqlalchemy.exc import InterfaceError
 
 from tests.helpers import TestModel, TestRepository, initialize_invalid_class
+from tests.repository.helpers import SampleRepo
 
 
 class TestBaseRepository:
@@ -22,7 +24,7 @@ class TestBaseRepository:
 
         # Проверяем, что сессия правильно присвоена
         assert_that(
-            actual_or_assertion=repo._get_session_for_testing(),
+            actual_or_assertion=repo.session,
             matcher=equal_to(obj=session),
         )
 
@@ -395,3 +397,56 @@ class TestBaseRepository:
                 actual_or_assertion=session.rollback.call_count,
                 matcher=greater_than_or_equal_to(1),
             )
+
+    @patch.object(
+        target=SampleRepo,
+        attribute='execute',
+        new_callable=AsyncMock,
+    )
+    async def test_is_connection_exist_success(
+        self,
+        repo_execute_mock: AsyncMock,
+    ) -> None:
+        """Проверка метода _is_connection_exist_success.
+
+        Данный тест проверяет возвращается ли
+        значение "True" при успешном execute в сессии.
+        """
+        repo_execute_mock.return_value = None
+        repo = SampleRepo(session=AsyncMock())
+
+        result = await repo._is_connection_exist()
+
+        assert_that(
+            actual_or_assertion=result,
+            matcher=is_(True),
+        )
+
+    @patch.object(
+        target=SampleRepo,
+        attribute='execute',
+        new_callable=AsyncMock,
+    )
+    async def test_is_connection_exist_failed(
+        self,
+        repo_execute_mock: AsyncMock,
+    ) -> None:
+        """Проверка метода _is_connection_exist_success.
+
+        Данный тест проверяет возвращается ли
+        значение "False" при неудачном execute в сессии.
+        """
+        repo_execute_mock.side_effect = InterfaceError(
+            statement='SELECT 1',
+            params={},
+            orig=Exception('Соединение отсутствует'),
+            connection_invalidated=True,
+        )
+        repo = SampleRepo(session=AsyncMock())
+
+        result = await repo._is_connection_exist()
+
+        assert_that(
+            actual_or_assertion=result,
+            matcher=is_(False),
+        )
