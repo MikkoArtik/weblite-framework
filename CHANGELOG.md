@@ -25,11 +25,11 @@
 - Метод `_is_connection_exist` в `BaseRepositoryClass` для проверки соединения с базой данных;
 - Юнит-тесты для метода `_is_connection_exist` (успешное соединение и ошибка `InterfaceError`);
 - Вспомогательные классы для тестов репозитория (`SampleModel`, `SampleDTO`, `SampleRepo`);
-- Модуль кастомных валидаторов weblite_framework/schemas/validators.py; 
-- Тесты кастомных валидаторов tests/schemas/test_validators.py;
-- Вспомогательные функции для тестирования tests/schemas/helpers.py;
+- Модуль кастомных валидаторов; 
+- Тесты кастомных валидаторов;
 - Библиотека freezegun в раздел tool.poetry.group.test.dependencies;
-- 
+- Библиотека virtualenv версии 20.31.2 в раздел tool.poetry.group.test.dependencies;
+
 ### Изменено
 - Переименован `_get_session_for_testing` в `session` (теперь это публичное свойство)
 - Тест `test_initialization` в `test_base.py` обновлён на использование свойства `session`.
