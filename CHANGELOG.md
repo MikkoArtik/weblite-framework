@@ -15,6 +15,13 @@
 |  Исправлено  | Исправлен баг.                                                         |
 | Безопасность | Выявлена уязвимость.                                                   |
 
+## [Unreleased]
+
+### Добавлено
+- Модуль кастомных валидаторов weblite_framework/schemas/validators.py; 
+- Тесты кастомных валидаторов tests/schemas/test_validators.py;
+- Библиотека freezegun в раздел tool.poetry.group.test.dependencies;
+
 ## [0.2.0]
 
 ### Добавлено
@@ -25,9 +32,6 @@
 - Метод `_is_connection_exist` в `BaseRepositoryClass` для проверки соединения с базой данных;
 - Юнит-тесты для метода `_is_connection_exist` (успешное соединение и ошибка `InterfaceError`);
 - Вспомогательные классы для тестов репозитория (`SampleModel`, `SampleDTO`, `SampleRepo`);
-- Модуль кастомных валидаторов; 
-- Тесты кастомных валидаторов;
-- Библиотека freezegun в раздел tool.poetry.group.test.dependencies;
 
 ### Изменено
 - Переименован `_get_session_for_testing` в `session` (теперь это публичное свойство)
