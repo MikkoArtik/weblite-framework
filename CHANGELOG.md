@@ -18,9 +18,9 @@
 ## [Unreleased]
 
 ### Добавлено
-- Модуль кастомных валидаторов weblite_framework/schemas/validators.py; 
-- Тесты кастомных валидаторов tests/schemas/test_validators.py;
-- Библиотека freezegun в раздел tool.poetry.group.test.dependencies;
+- Модуль кастомных валидаторов `weblite_framework/schemas/validators.py`; 
+- Тесты кастомных валидаторов `tests/schemas/test_validators.py`;
+- Библиотека freezegun в раздел `tool.poetry.group.test.dependencies`;
 
 ## [0.2.0]
 
