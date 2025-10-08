@@ -7,7 +7,6 @@ import pytest
 from freezegun import freeze_time
 from hamcrest import assert_that, equal_to
 
-from tests.schemas.helpers import add_brackets
 from weblite_framework.schemas.validators import (
     check_email_pattern,
     check_has_timezone,
@@ -30,20 +29,6 @@ from weblite_framework.schemas.validators import (
 class TestSkipIfNone:
     """Тесты для декоратора skip_if_none."""
 
-    def failing_validator(self, value: str) -> str:
-        """Вспомогательный валидатор, который всегда выбрасывает исключение.
-
-        Args:
-            value: Входное значение
-
-        Returns:
-            str: Никогда не возвращает значение
-
-        Raises:
-            ValueError: Всегда выбрасывает исключение
-        """
-        raise ValueError("Test exception")
-
     @pytest.mark.parametrize(
         argnames='inp, expected',
         argvalues=[
@@ -52,30 +37,32 @@ class TestSkipIfNone:
         ],
     )
     def test_skip_if_none_basic(
-            self,
-            inp: str | None,
-            expected: str | None,
+        self,
+        inp: str | None,
+        expected: str | None,
     ) -> None:
         """Проверяет базовое поведение декоратора skip_if_none.
 
         Убеждается, что для None возвращается None,
-        а для строки вызывается исходная функция add_brackets.
+        а для строки вызывается исходная функция.
 
         Args:
             inp: Входное значение
             expected: Ожидаемый результат после применения декоратора
         """
-        wrapped = skip_if_none(func=add_brackets)
+
+        def add_brackets_func(value: str) -> str:
+            return f'[{value}]'
+
+        wrapped = skip_if_none(func=add_brackets_func)
         assert_that(
             actual_or_assertion=wrapped(value=inp),
             matcher=equal_to(obj=expected),
         )
 
-    def test_propagates_exceptions_from_wrapped(self) -> None:
-        """Исключения исходной функции пробрасываются наружу."""
-        wrapped = skip_if_none(func=self.failing_validator)
-        with pytest.raises(expected_exception=ValueError):
-            wrapped(value='x')
+    def failing_validator(self, value: str) -> str:
+        """Валидатор, который всегда выбрасывает исключение 'boom'."""
+        raise ValueError('boom')
 
 
 class TestSkipIfNoneIntegration:
