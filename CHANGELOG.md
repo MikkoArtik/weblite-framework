@@ -15,6 +15,19 @@
 |  Исправлено  | Исправлен баг.                                                         |
 | Безопасность | Выявлена уязвимость.                                                   |
 
+## [Unreleased]
+
+### Добавлено
+- Модули исключений `auth`, `repository`, `services`;
+- Зависимость fastapi в `pyproject.toml`
+
+## [0.3.0]
+
+### Добавлено
+- Модуль кастомных валидаторов `weblite_framework/schemas/validators.py`; 
+- Тесты кастомных валидаторов `tests/schemas/test_validators.py`;
+- Библиотека freezegun в раздел `tool.poetry.group.test.dependencies`;
+
 ## [0.2.0]
 
 ### Добавлено
