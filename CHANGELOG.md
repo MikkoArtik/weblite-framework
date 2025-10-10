@@ -18,7 +18,7 @@
 ## [Unreleased]
 
 ### Добавлено
-- Модули исключений `auth`, `repository`, `services`;
+- Модули исключений `auth`, `repository`;
 - Зависимость fastapi в `pyproject.toml`
 
 ## [0.3.0]
