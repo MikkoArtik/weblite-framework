@@ -1,19 +1,19 @@
 """Модуль исключений, связанных с ошибками в слое репозитория."""
 
-from fastapi import HTTPException, status
+from weblite_framework.exceptions.auth import BaseAppException
 
 __all__ = [
     'RepositoryException',
 ]
 
 
-class RepositoryException(HTTPException):
+class RepositoryException(BaseAppException):
     """Класс исключения, связанного с БД."""
 
     def __init__(
         self,
         detail: str = 'Ошибка при работе с репозиторием',
-        status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
+        status_code: int = 500,
     ) -> None:
         """Инициализирует исключение, возникшее в слое репозитория.
 

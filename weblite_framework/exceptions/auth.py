@@ -1,14 +1,28 @@
 """Модуль исключений, связанных с авторизацией и правами доступа."""
 
-from fastapi import HTTPException, status
-
 __all__ = [
+    'BaseAppException',
     'UnauthorizedException',
     'ForbiddenException',
 ]
 
 
-class UnauthorizedException(HTTPException):
+class BaseAppException(Exception):
+    """Базовое исключение для всех кастомных исключений."""
+
+    def __init__(self, status_code: int, detail: str) -> None:
+        """Инициализирует базовое исключение.
+
+        Args:
+            status_code: Код передаваемой ошибки
+            detail: Сообщение с передаваемой информацией
+        """
+        self.status_code = status_code
+        self.detail = detail
+        super().__init__(self.detail)
+
+
+class UnauthorizedException(BaseAppException):
     """Класс исключения, связанного с авторизацией."""
 
     def __init__(self, detail: str = 'Необходима авторизация') -> None:
@@ -18,12 +32,12 @@ class UnauthorizedException(HTTPException):
             detail: Сообщение с передаваемой информацией
         """
         super().__init__(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=401,
             detail=detail,
         )
 
 
-class ForbiddenException(HTTPException):
+class ForbiddenException(BaseAppException):
     """Класс исключения, вызываемого при отсутствии прав доступа к ресурсу."""
 
     def __init__(
@@ -37,6 +51,6 @@ class ForbiddenException(HTTPException):
             detail: Сообщение с передаваемой информацией
         """
         super().__init__(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=403,
             detail=detail,
         )
