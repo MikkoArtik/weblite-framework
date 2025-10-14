@@ -92,11 +92,7 @@ class S3Provider:
         """
         try:
             if self._client_cm is not None:
-                await self._client_cm.__aexit__(
-                    exc_type=exc_type,
-                    exc_value=exc,
-                    traceback=tb,
-                )
+                await self._client_cm.__aexit__(exc_type, exc, tb)
         finally:
             self._client = None
             self._client_cm = None
