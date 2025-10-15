@@ -5,7 +5,7 @@ build:
 	docker compose --env-file local.env -f docker-compose-local.yml build
 
 # Запуск сервиса
-up:
+up:  build
 	docker compose --env-file local.env -f docker-compose-local.yml up
 
 # Остановка сервиса
