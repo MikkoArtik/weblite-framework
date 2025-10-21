@@ -1,7 +1,3 @@
-# TODO:
-# В ручках FastAPI перехватывать ошибки валидации из провайдера
-# и возвращать корректные HTTP-коды.
-
 """S3-провайдер на aioboto3: upload/get/delete/list."""
 
 from typing import Any
@@ -11,7 +7,9 @@ from botocore.config import Config
 
 from weblite_framework.settings.s3 import S3Settings
 
-__all__ = ['S3Provider']
+__all__ = [
+    'S3Provider',
+]
 
 
 class S3Provider:
