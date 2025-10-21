@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "weblite_framework"
-version = "0.4.0"
+version = "0.4.1"
 description = ""
 authors = ["Чернов Михаил <mihail.tchernov@yandex.ru>"]
 readme = "README.md"
@@ -41,7 +41,7 @@ testpaths = "tests"
 asyncio_mode = "auto"
 
 [tool.flake8]
-exclude = ["__pycache__"]
+exclude = ["__pycache__", "venv"]
 max-line-length = 79
 max-doc-length = 79
 docstring-convention = "google"
@@ -54,15 +54,25 @@ per-file-ignores = [
 max-complexity = 5
 
 [tool.black]
+exclude = '''
+/(
+    \.git
+  | __pycache__
+  | \.pytest_cache
+  | venv
+)
+'''
 line-length = 79
 skip-string-normalization = true
 
 [tool.isort]
+extend_skip = [".git", "__pycache__", "venv"]
 include_trailing_comma = true
 multi_line_output = 3
 line_length = 79
 
 [tool.mypy]
+exclude = ["__pycache__", "venv"]
 strict = true
 plugins = "pydantic.mypy"
 ignore_missing_imports = true

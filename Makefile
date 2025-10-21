@@ -14,10 +14,10 @@ down:
 
 # Запуск линтеров
 run-linters:
-	poetry run isort --check-only --diff .
-	poetry run black --check --diff .
-	poetry run flake8 .
-	poetry run mypy .
+	flake8 .
+	black --check --diff .
+	mypy .
+	isort --check-only --diff .
 
 # Запуск тестов внутри контейнера weblite_framework
 test:
