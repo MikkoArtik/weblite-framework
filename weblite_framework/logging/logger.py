@@ -1,7 +1,8 @@
 """Модуль логирования."""
 
 import logging
-from logging.handlers import QueueListener, QueueHandler
+import sys
+from logging.handlers import QueueHandler, QueueListener
 from queue import Queue
 
 from weblite_framework.logging.formatters import JsonFormatter

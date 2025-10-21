@@ -5,7 +5,7 @@ from typing import Any, Final, Type, TypeVar
 from pydantic import BaseModel, ConfigDict
 
 T = TypeVar(
-    name='T',
+    'T',
     bound='CustomBaseModel',
 )
 

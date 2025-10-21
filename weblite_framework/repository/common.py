@@ -9,11 +9,9 @@ __all__ = [
     'CommonRepo',
 ]
 
-DTO = TypeVar(
-    name='DTO',
-)
+DTO = TypeVar('DTO')
 SQLModel = TypeVar(
-    name='SQLModel',
+    'SQLModel',
     bound=BaseModel,
 )
 
