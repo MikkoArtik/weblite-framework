@@ -2,7 +2,9 @@
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-__all__ = ['S3Settings']
+__all__ = [
+    'S3Settings',
+]
 
 
 class S3Settings(BaseSettings):
