@@ -20,7 +20,9 @@ class ServiceHealthError(Exception):
             service_name: Имя сервиса
             detail: Детали для уточнения ошибки
         """
-        super().__init__(f'{service_name}: {detail}')
+        self.service_name = service_name
+        self.detail = f'{service_name}: {detail}'
+        super().__init__(self.detail)
 
 
 class DatabaseConnectionError(ServiceHealthError):

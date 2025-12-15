@@ -1,15 +1,45 @@
-"""Модуль логирования."""
+"""Модуль логирования для weblite-framework."""
 
+import json
 import logging
 import sys
+from datetime import datetime
 from logging.handlers import QueueHandler, QueueListener
 from queue import Queue
 
-from weblite_framework.logging.formatters import JsonFormatter
-
 __all__ = [
+    'JsonFormatter',
     'get_logger',
 ]
+
+
+class JsonFormatter(logging.Formatter):
+    """Класс для преобразования записей логов в JSON-строки с полями."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        """Форматирует запись лога в JSON строку.
+
+        Поля:
+        timestamp: Временная метка
+        level: Уровень логирования
+        source: Источник сообщения (модуль)
+        message: Текст сообщения
+
+        Args:
+            record: Запись лога для форматирования
+
+        Returns:
+              JSON-строка с отформатированным логом
+        """
+        log_record = {
+            'timestamp': datetime.fromtimestamp(record.created)
+            .astimezone()
+            .isoformat(),
+            'level': record.levelname,
+            'source': record.module,
+            'message': record.getMessage(),
+        }
+        return json.dumps(log_record, ensure_ascii=False)
 
 
 _loggers: dict[str, logging.Logger] = {}
