@@ -1,8 +1,11 @@
 """Настройки для подключения к S3."""
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-__all__ = ['S3Settings']
+__all__ = [
+    'S3Settings',
+]
 
 
 class S3Settings(BaseSettings):
@@ -30,11 +33,11 @@ class S3Settings(BaseSettings):
         extra='ignore',
     )
 
-    bucket: str
-    access_key: str
-    secret_key: str
-    region: str
-    endpoint_url: str
+    bucket: str = Field(alias='s3_bucket')
+    access_key: str = Field(alias='s3_access_key')
+    secret_key: str = Field(alias='s3_secret_key')
+    region: str = Field(alias='s3_region')
+    endpoint_url: str = Field(alias='s3_endpoint_url')
     path_style: bool = True
     signature_version: str = 's3v4'
     max_attempts: int = 3

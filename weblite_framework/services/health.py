@@ -5,7 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from weblite_framework.exceptions.service import DatabaseConnectionError
 from weblite_framework.repository.common import CommonRepo
 
-__all__ = ['HealthService']
+__all__ = [
+    'HealthService',
+]
 
 
 class HealthService:

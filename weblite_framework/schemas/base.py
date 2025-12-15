@@ -4,9 +4,14 @@ from typing import Any, Final, Type, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
-T = TypeVar('T', bound='CustomBaseModel')
+T = TypeVar(
+    'T',
+    bound='CustomBaseModel',
+)
 
-__all__ = ['CustomBaseModel']
+__all__ = [
+    'CustomBaseModel',
+]
 
 REQUIRED_FIELD_ATTRIBUTES: Final[tuple[str, ...]] = (
     'alias',

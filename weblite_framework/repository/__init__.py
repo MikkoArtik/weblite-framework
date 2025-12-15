@@ -2,4 +2,6 @@
 
 from .base import BaseRepositoryClass
 
-__all__ = ['BaseRepositoryClass']
+__all__ = [
+    'BaseRepositoryClass',
+]

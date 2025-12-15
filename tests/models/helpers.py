@@ -4,7 +4,9 @@ from pydantic import EmailStr, Field
 
 from weblite_framework.schemas.base import CustomBaseModel
 
-__all__ = ['UserSchemaExample']
+__all__ = [
+    'UserSchemaExample',
+]
 
 
 class UserSchemaExample(CustomBaseModel):
