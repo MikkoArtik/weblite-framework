@@ -12,6 +12,7 @@ pydantic-settings = "2.10.1"
 aioboto3 = "15.1.0"
 sqlalchemy = {extras = ["asyncio"], version = "2.0.36"}
 pre-commit = "^4.3.0"
+propcache = "^0.4.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "8.4.1"
