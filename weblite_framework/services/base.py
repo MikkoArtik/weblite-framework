@@ -96,7 +96,6 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA]):
         """
         data: Dict[str, Any] = {}
 
-        # Получаем поля схемы
         fields = self._get_schema_fields_from_instance()
         if not fields:
             fields = self._get_schema_fields_from_annotations()
