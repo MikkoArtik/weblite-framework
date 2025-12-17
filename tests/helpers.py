@@ -2,11 +2,10 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import ClassVar, Dict, Optional, Protocol, TypeVar
+from typing import Any, ClassVar, Dict, Optional, Protocol, TypeVar
 from unittest.mock import AsyncMock, Mock
 
 from sqlalchemy import Integer, String
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from weblite_framework.database.models import BaseModel
@@ -214,6 +213,12 @@ class ServiceTestDTO:
 class TestSchema:
     """Тестовая Pydantic схема."""
 
+    id_: Optional[int] = None
+    name: Optional[str] = None
+    email: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
     __fields__: ClassVar[Dict[str, Mock]] = {
         'id_': Mock(),
         'name': Mock(),
@@ -227,7 +232,7 @@ class TestSchema:
 
         arbitrary_types_allowed = True
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:  # noqa ANN401
         """Инициализирует тестовую схему.
 
         Args:
@@ -308,17 +313,3 @@ class TestService(BaseServiceClass[ServiceTestDTO, TestSchema]):
 
     DTO_CLASS = ServiceTestDTO
     SCHEMA_CLASS = TestSchema
-
-    def __init__(
-        self,
-        session: AsyncSession,
-        resume_repo: Optional[Mock] = None,
-    ) -> None:
-        """Инициализирует тестовый сервис.
-
-        Args:
-            session: SQLAlchemy сессия
-            resume_repo: Мок репозитория резюме
-        """
-        super().__init__(session)
-        self._resume_repo = resume_repo

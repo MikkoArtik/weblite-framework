@@ -1,5 +1,6 @@
 """Базовый сервис для всех сервисов приложения."""
 
+from abc import ABC, abstractmethod
 from typing import (
     Any,
     Dict,
@@ -29,98 +30,49 @@ T_DTO = TypeVar('T_DTO')
 T_SCHEMA = TypeVar('T_SCHEMA')
 
 
-class BaseServiceClass(Generic[T_DTO, T_SCHEMA]):
-    """Базовый сервис с приватными утилитами для конвертации DTO ↔ Schema.
-
-    Примечание:
-    - Все методы с префиксом '_' предназначены для ВНУТРЕННЕГО использования
-      в дочерних сервисах проекта
-    - В проектах должны оставаться свои приватные методы с '__'
-    """
-
-    DTO_CLASS: Type[T_DTO]
-    SCHEMA_CLASS: Type[T_SCHEMA]
+class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
+    """Базовый абстрактный сервис с утилитами для конвертации DTO ↔ Schema."""
 
     def __init__(
         self,
         session: AsyncSession,
+        resume_repo: Optional[Any] = None,
     ) -> None:
         """Инициализирует базовый сервис.
 
         Args:
             session: SQLAlchemy async session
+            resume_repo: Опциональный репозиторий для проверки доступа
         """
         self._session = session
-        self._resume_repo: Optional[Any] = None
+        self._resume_repo = resume_repo
 
-    async def _is_user_has_access(
-        self,
-        resume_id: int,
-        user_id: int,
-    ) -> bool:
-        """Проверяет доступ пользователя к резюме.
+    @property
+    @abstractmethod
+    def DTO_CLASS(self) -> Type[T_DTO]:
+        """Класс DTO, должен быть определен в дочернем классе."""
+        pass
 
-        Данный метод проверяет, что резюме
-        принадлежит текущему пользователю.
+    @property
+    @abstractmethod
+    def SCHEMA_CLASS(self) -> Type[T_SCHEMA]:
+        """Класс схемы, должен быть определен в дочернем классе."""
+        pass
 
-        Args:
-            resume_id: Идентификатор резюме
-            user_id: Идентификатор пользователя
-
-        Returns:
-            bool: True если резюме принадлежит пользователю,
-                False в противном случае
-
-        Raises:
-            RepositoryException: Если _resume_repo не установлен
-        """
-        if self._resume_repo is None:
-            raise RepositoryException(detail=RESUME_REPO_NOT_INITIALIZED_MSG)
-
-        resume = await self._resume_repo.get_by_id(id_=resume_id)
-        return resume is not None and resume.user_id == user_id
-
-    def _dto_to_schema(
-        self,
-        dto: T_DTO,
-    ) -> T_SCHEMA:
-        """Конвертирует DTO в ResponseSchema.
-
-        Автоматически исключает поля, которых нет в схеме.
-
-        Args:
-            dto: Объект DTO для конвертации
-
-        Returns:
-            Объект ResponseSchema
-        """
-        data: Dict[str, Any] = {}
-
-        fields = self._get_schema_fields_from_instance()
-        if not fields:
-            fields = self._get_schema_fields_from_annotations()
-        if not fields:
-            fields = self._get_schema_fields_from_type_hints()
-
-        for field_name in fields:
-            if hasattr(dto, field_name):
-                data[field_name] = getattr(dto, field_name)
-
-        return self.SCHEMA_CLASS(**data)
-
-    def _get_schema_fields_from_instance(self) -> List[str]:
-        """Получает поля схемы через создание экземпляра.
+    def _get_schema_fields_from_type_hints(self) -> List[str]:
+        """Получает поля схемы через get_type_hints.
 
         Returns:
             Список имен полей схемы
         """
         try:
-            schema_instance = self.SCHEMA_CLASS()
-            if hasattr(schema_instance, '__dict__'):
-                return list(schema_instance.__dict__.keys())
-        except Exception:
-            pass
-        return []
+            return list(get_type_hints(self.SCHEMA_CLASS).keys())
+        except Exception as exc:
+            error_msg = (
+                f'Не удалось получить поля схемы {self.SCHEMA_CLASS.__name__} '
+                f'через get_type_hints. Ошибка: {exc}'
+            )
+            raise RepositoryException(detail=error_msg) from exc
 
     def _get_schema_fields_from_annotations(self) -> List[str]:
         """Получает поля схемы через аннотации класса.
@@ -132,30 +84,79 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA]):
             return list(self.SCHEMA_CLASS.__annotations__.keys())
         return []
 
-    def _get_schema_fields_from_type_hints(self) -> List[str]:
-        """Получает поля схемы через get_type_hints.
+    def _get_schema_fields_from_instance(self) -> List[str]:
+        """Получает поля схемы через создание экземпляра.
+
+        Returns:
+            Список имен полей схемы
+
+        Raises:
+            RepositoryException: Если не удалось создать экземпляр схемы
+        """
+        try:
+            schema_instance = self.SCHEMA_CLASS()
+        except Exception as exc:
+            error_msg = (
+                f'Не удалось создать экземпляр схемы '
+                f'{self.SCHEMA_CLASS.__name__}. Ошибка: {exc}'
+            )
+            raise RepositoryException(detail=error_msg) from exc
+
+        if hasattr(schema_instance, '__dict__'):
+            return [
+                field
+                for field in schema_instance.__dict__.keys()
+                if not field.startswith('_')
+                and field != 'model_fields'  # noqa: W503
+                and field != '__fields__'  # noqa: W503
+            ]
+
+        return []
+
+    def _get_schema_fields(self) -> List[str]:
+        """Получает поля схемы используя различные методы.
 
         Returns:
             Список имен полей схемы
         """
         try:
-            return list(get_type_hints(self.SCHEMA_CLASS).keys())
-        except Exception:
-            return []
+            return self._get_schema_fields_from_type_hints()
+        except RepositoryException:
+            fields = self._get_schema_fields_from_annotations()
+            if not fields:
+                fields = self._get_schema_fields_from_instance()
+            return fields
 
-    def _bulk_dto_to_schema(
+    def _dto_to_schema(
         self,
-        dtos: List[T_DTO],
-    ) -> List[T_SCHEMA]:
-        """Конвертирует список DTO в список схем.
+        dto: T_DTO,
+    ) -> T_SCHEMA:
+        """Конвертирует DTO в ResponseSchema.
 
         Args:
-            dtos: Список объектов DTO
+            dto: Объект DTO для конвертации
 
         Returns:
-            Список объектов ResponseSchema
+            Объект ResponseSchema
+
+        Raises:
+            RepositoryException: Если не удалось создать экземпляр схемы
         """
-        return [self._dto_to_schema(dto) for dto in dtos]
+        data: Dict[str, Any] = {}
+        fields = self._get_schema_fields()
+
+        for field_name in fields:
+            if hasattr(dto, field_name):
+                data[field_name] = getattr(dto, field_name)
+
+        try:
+            return self.SCHEMA_CLASS(**data)
+        except Exception as exc:
+            error_msg = (
+                f'Не удалось создать экземпляр схемы '
+                f'{self.SCHEMA_CLASS.__name__}. Ошибка: {exc}'
+            )
+            raise RepositoryException(detail=error_msg) from exc
 
     def _schema_to_dto(
         self,
@@ -184,6 +185,20 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA]):
         data.update(additional_fields)
         return self.DTO_CLASS(**data)
 
+    def _bulk_dto_to_schema(
+        self,
+        dtos: List[T_DTO],
+    ) -> List[T_SCHEMA]:
+        """Конвертирует список DTO в список схем.
+
+        Args:
+            dtos: Список объектов DTO
+
+        Returns:
+            Список объектов ResponseSchema
+        """
+        return [self._dto_to_schema(dto) for dto in dtos]
+
     def _bulk_schema_to_dto(
         self,
         schemas: List[Any],  # noqa: ANN401
@@ -206,3 +221,27 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA]):
             )
             dtos.append(dto)
         return dtos
+
+    async def _is_user_has_access(
+        self,
+        resume_id: int,
+        user_id: int,
+    ) -> bool:
+        """Проверяет доступ пользователя к резюме.
+
+        Args:
+            resume_id: Идентификатор резюме
+            user_id: Идентификатор пользователя
+
+        Returns:
+            True если резюме принадлежит пользователю,
+            False в противном случае
+
+        Raises:
+            RepositoryException: Если _resume_repo не установлен
+        """
+        if self._resume_repo is None:
+            raise RepositoryException(detail=RESUME_REPO_NOT_INITIALIZED_MSG)
+
+        resume = await self._resume_repo.get_by_id(id_=resume_id)
+        return resume is not None and resume.user_id == user_id
