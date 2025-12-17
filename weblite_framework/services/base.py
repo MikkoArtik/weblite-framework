@@ -84,7 +84,7 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
             return list(self.SCHEMA_CLASS.__annotations__.keys())
         return []
 
-    def _get_schema_fields_from_instance(self) -> List[str]:
+    def _get_schema_fields_from_instance(self) -> List[str]:  # noqa: C901
         """Получает поля схемы через создание экземпляра.
 
         Returns:
@@ -102,16 +102,18 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
             )
             raise RepositoryException(detail=error_msg) from exc
 
-        if hasattr(schema_instance, '__dict__'):
-            return [
-                field
-                for field in schema_instance.__dict__.keys()
-                if not field.startswith('_')
-                and field != 'model_fields'  # noqa: W503
-                and field != '__fields__'  # noqa: W503
-            ]
+        if not hasattr(schema_instance, '__dict__'):
+            return []
 
-        return []
+        excluded_fields = {'model_fields', '__fields__'}
+        result = []
+        for field in schema_instance.__dict__.keys():
+            if field.startswith('_'):
+                continue
+            if field in excluded_fields:
+                continue
+            result.append(field)
+        return result
 
     def _get_schema_fields(self) -> List[str]:
         """Получает поля схемы используя различные методы.
@@ -146,8 +148,14 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
         fields = self._get_schema_fields()
 
         for field_name in fields:
-            if hasattr(dto, field_name):
-                data[field_name] = getattr(dto, field_name)
+            if hasattr(
+                dto,
+                field_name,
+            ):
+                data[field_name] = getattr(
+                    dto,
+                    field_name,
+                )
 
         try:
             return self.SCHEMA_CLASS(**data)
@@ -197,7 +205,11 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
         Returns:
             Список объектов ResponseSchema
         """
-        return [self._dto_to_schema(dto) for dto in dtos]
+        schemas: List[T_SCHEMA] = []
+        for dto in dtos:
+            schema = self._dto_to_schema(dto)
+            schemas.append(schema)
+        return schemas
 
     def _bulk_schema_to_dto(
         self,

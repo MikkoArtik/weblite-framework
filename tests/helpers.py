@@ -253,7 +253,10 @@ class TestSchema:
         Returns:
             bool: True если объекты равны, иначе False
         """
-        if not isinstance(other, TestSchema):
+        if not isinstance(
+            other,
+            TestSchema,
+        ):
             return False
 
         return all(
