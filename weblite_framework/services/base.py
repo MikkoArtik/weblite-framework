@@ -1,16 +1,7 @@
 """Базовый сервис для всех сервисов приложения."""
 
 from abc import ABC, abstractmethod
-from typing import (
-    Any,
-    Dict,
-    Generic,
-    List,
-    Optional,
-    Type,
-    TypeVar,
-    get_type_hints,
-)
+from typing import Any, Generic, Optional, Type, TypeVar, get_type_hints
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -59,7 +50,7 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
         """Класс схемы, должен быть определен в дочернем классе."""
         pass
 
-    def _get_schema_fields_from_type_hints(self) -> List[str]:
+    def _get_schema_fields_from_type_hints(self) -> list[str]:
         """Получает поля схемы через get_type_hints.
 
         Returns:
@@ -74,7 +65,7 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
             )
             raise RepositoryException(detail=error_msg) from exc
 
-    def _get_schema_fields_from_annotations(self) -> List[str]:
+    def _get_schema_fields_from_annotations(self) -> list[str]:
         """Получает поля схемы через аннотации класса.
 
         Returns:
@@ -84,7 +75,7 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
             return list(self.SCHEMA_CLASS.__annotations__.keys())
         return []
 
-    def _get_schema_fields_from_instance(self) -> List[str]:  # noqa: C901
+    def _get_schema_fields_from_instance(self) -> list[str]:  # noqa: C901
         """Получает поля схемы через создание экземпляра.
 
         Returns:
@@ -115,7 +106,7 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
             result.append(field)
         return result
 
-    def _get_schema_fields(self) -> List[str]:
+    def _get_schema_fields(self) -> list[str]:
         """Получает поля схемы используя различные методы.
 
         Returns:
@@ -144,7 +135,7 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
         Raises:
             RepositoryException: Если не удалось создать экземпляр схемы
         """
-        data: Dict[str, Any] = {}
+        data: dict[str, Any] = {}
         fields = self._get_schema_fields()
 
         for field_name in fields:
@@ -184,7 +175,7 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
             RepositoryException: Если схема не имеет метода model_dump()
         """
         try:
-            data: Dict[str, Any] = schema.model_dump()
+            data: dict[str, Any] = schema.model_dump()
         except AttributeError as exc:
             raise RepositoryException(
                 detail=SCHEMA_NO_MODEL_DUMP_MSG.format(exc)
@@ -195,8 +186,8 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
 
     def _bulk_dto_to_schema(
         self,
-        dtos: List[T_DTO],
-    ) -> List[T_SCHEMA]:
+        dtos: list[T_DTO],
+    ) -> list[T_SCHEMA]:
         """Конвертирует список DTO в список схем.
 
         Args:
@@ -205,7 +196,7 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
         Returns:
             Список объектов ResponseSchema
         """
-        schemas: List[T_SCHEMA] = []
+        schemas: list[T_SCHEMA] = []
         for dto in dtos:
             schema = self._dto_to_schema(dto)
             schemas.append(schema)
@@ -213,9 +204,9 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
 
     def _bulk_schema_to_dto(
         self,
-        schemas: List[Any],  # noqa: ANN401
+        schemas: list[Any],  # noqa: ANN401
         **additional_fields: Any,  # noqa: ANN401
-    ) -> List[T_DTO]:
+    ) -> list[T_DTO]:
         """Конвертирует список RequestSchema в список DTO.
 
         Args:
@@ -225,7 +216,7 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
         Returns:
             Список объектов DTO
         """
-        dtos: List[T_DTO] = []
+        dtos: list[T_DTO] = []
         for schema in schemas:
             dto = self._schema_to_dto(
                 schema=schema,
