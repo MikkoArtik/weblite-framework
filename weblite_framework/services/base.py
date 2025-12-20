@@ -1,4 +1,4 @@
-"""Базовый сервис для всех сервисов приложения."""
+"""Модуль базового сервиса для работы с бизнес-логикой."""
 
 from abc import ABC, abstractmethod
 from typing import Any, Generic, Optional, Type, TypeVar, get_type_hints
@@ -107,7 +107,7 @@ class BaseServiceClass(Generic[T_DTO, T_SCHEMA], ABC):
         return result
 
     def _get_schema_fields(self) -> list[str]:
-        """Получает поля схемы используя различные методы.
+        """Получает поля схемы, используя доступные методы определения полей.
 
         Returns:
             Список имен полей схемы
