@@ -5,8 +5,6 @@ from typing import Any, Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from weblite_framework.exceptions.service import AccessDeniedError
-
 __all__ = ['BaseServiceClass']
 
 
@@ -82,23 +80,28 @@ class BaseServiceClass(Generic[DTO, SCHEMA], ABC):
     async def _is_user_has_access(
         self,
         repository: Any,  # noqa: ANN401
-        resume_id: int,
-        user_id: int,
-    ) -> None:
-        """Метод проверяет доступ пользователя к резюме.
+        entity_id: int,
+        entity_field_name: str,
+        expected_value: Any,  # noqa: ANN401
+    ) -> bool:
+        """Проверяет принадлежность сущности пользователю.
 
         Args:
             repository: Репозиторий с методом get_by_id
-            resume_id: Идентификатор резюме
-            user_id: Идентификатор пользователя
+            entity_id: Идентификатор сущности
+            entity_field_name: Название поля для проверки принадлежности
+            expected_value: Ожидаемое значение поля
 
-        Raises:
-            AccessDeniedError: Если доступ запрещен
+        Returns:
+            bool: True если доступ разрешен, False в противном случае
         """
-        resume = await repository.get_by_id(id_=resume_id)
-        if resume is None:
-            raise AccessDeniedError()
-        if not hasattr(resume, 'user_id'):
-            raise AccessDeniedError()
-        if resume.user_id != user_id:
-            raise AccessDeniedError()
+        entity = await repository.get_by_id(id_=entity_id)
+        if entity is None:
+            return False
+
+        if not hasattr(entity, entity_field_name):
+            return False
+
+        actual_value = getattr(entity, entity_field_name)
+        # Приводим к bool сравнение
+        return bool(actual_value == expected_value)

@@ -1,11 +1,8 @@
 """Модуль исключений, связанных с ошибками соединения."""
 
-from weblite_framework.exceptions.base import BaseAppException
-
 __all__ = [
     'ServiceHealthError',
     'DatabaseConnectionError',
-    'AccessDeniedError',
 ]
 
 
@@ -41,15 +38,4 @@ class DatabaseConnectionError(ServiceHealthError):
         super().__init__(
             service_name='База данных',
             detail=detail,
-        )
-
-
-class AccessDeniedError(BaseAppException):
-    """Исключение при отказе в доступе."""
-
-    def __init__(self) -> None:
-        """Инициализирует исключение AccessDeniedError."""
-        super().__init__(
-            status_code=403,
-            detail='Доступ запрещен',
         )
