@@ -103,5 +103,4 @@ class BaseServiceClass(Generic[DTO, SCHEMA], ABC):
             return False
 
         actual_value = getattr(entity, entity_field_name)
-        # Приводим к bool сравнение
         return bool(actual_value == expected_value)
