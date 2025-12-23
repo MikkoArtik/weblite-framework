@@ -96,7 +96,7 @@ class TestBaseServiceClass:
 
         assert_that(
             actual_or_assertion=schema,
-            matcher=instance_of(TestSchema),
+            matcher=instance_of(atype=TestSchema),
         )
         assert_that(
             actual_or_assertion=schema.id_,
@@ -133,7 +133,7 @@ class TestBaseServiceClass:
 
         assert_that(
             actual_or_assertion=dto,
-            matcher=instance_of(ServiceTestDTO),
+            matcher=instance_of(atype=ServiceTestDTO),
         )
         assert_that(
             actual_or_assertion=dto.id_,
