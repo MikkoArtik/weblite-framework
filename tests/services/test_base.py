@@ -3,7 +3,7 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from hamcrest import assert_that, equal_to, is_
+from hamcrest import assert_that, equal_to, instance_of, is_
 
 from tests.conftest import TestConcreteService
 from tests.helpers import ServiceTestDTO, TestSchema
@@ -62,33 +62,17 @@ class TestBaseServiceClass:
         """Проверка создания класса без абстрактных методов.
 
         Данный тест проверяет, что при попытке создать экземпляр
-        класса, наследующегося от BaseServiceClass, с заглушками
-        в абстрактных методах, возникает NotImplementedError
-        при вызове этих методов.
+        класса, просто наследующегося от BaseServiceClass,
+        без переопределения абстрактных методов, возникает TypeError.
         """
         session = AsyncMock()
 
-        class InvalidService(BaseServiceClass[ServiceTestDTO, TestSchema]):
-            """Класс с заглушками в абстрактных методах."""
+        with pytest.raises(TypeError):
 
-            def _dto_to_schema(self, dto: ServiceTestDTO) -> TestSchema:
-                """Заглушка, которая выбрасывает NotImplementedError."""
-                raise NotImplementedError
+            class InvalidService(BaseServiceClass[ServiceTestDTO, TestSchema]):
+                pass
 
-            def _schema_to_dto(self, schema: TestSchema) -> ServiceTestDTO:
-                """Заглушка, которая выбрасывает NotImplementedError."""
-                raise NotImplementedError
-
-        service = InvalidService(session=session)
-
-        dto = ServiceTestDTO(id_=1, name='test', email='test@example.com')
-
-        with pytest.raises(NotImplementedError):
-            service._dto_to_schema(dto)
-
-        with pytest.raises(NotImplementedError):
-            schema = TestSchema(id_=1, name='test', email='test@example.com')
-            service._schema_to_dto(schema)
+            InvalidService(session=session)  # type: ignore
 
     def test_dto_to_schema_conversion(
         self,
@@ -111,14 +95,8 @@ class TestBaseServiceClass:
         schema = service._dto_to_schema(dto=dto)
 
         assert_that(
-            actual_or_assertion=isinstance(dto, ServiceTestDTO),
-            matcher=is_(True),
-            reason='dto должен быть экземпляром ServiceTestDTO',
-        )
-        assert_that(
-            actual_or_assertion=isinstance(schema, TestSchema),
-            matcher=is_(True),
-            reason='schema должен быть экземпляром TestSchema',
+            actual_or_assertion=schema,
+            matcher=instance_of(TestSchema),
         )
         assert_that(
             actual_or_assertion=schema.id_,
@@ -154,14 +132,8 @@ class TestBaseServiceClass:
         dto = service._schema_to_dto(schema=schema)
 
         assert_that(
-            actual_or_assertion=isinstance(schema, TestSchema),
-            matcher=is_(True),
-            reason='schema должен быть экземпляром TestSchema',
-        )
-        assert_that(
-            actual_or_assertion=isinstance(dto, ServiceTestDTO),
-            matcher=is_(True),
-            reason='dto должен быть экземпляром ServiceTestDTO',
+            actual_or_assertion=dto,
+            matcher=instance_of(ServiceTestDTO),
         )
         assert_that(
             actual_or_assertion=dto.id_,
