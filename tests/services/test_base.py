@@ -2,54 +2,12 @@
 
 from unittest.mock import AsyncMock, Mock
 
-from hamcrest import assert_that, equal_to
+import pytest
+from hamcrest import assert_that, equal_to, is_
 
-from tests.helpers import ServiceTestDTO, TestSchema, TestService
+from tests.conftest import TestConcreteService
+from tests.helpers import ServiceTestDTO, TestSchema
 from weblite_framework.services.base import BaseServiceClass
-
-
-class TestConcreteService(TestService):
-    """Реализация сервиса для тестирования."""
-
-    def _dto_to_schema(
-        self,
-        dto: ServiceTestDTO,
-    ) -> TestSchema:
-        """Конвертирует DTO в Schema.
-
-        Args:
-            dto: Объект DTO для конвертации
-
-        Returns:
-            TestSchema: Конвертированный объект схемы
-        """
-        return TestSchema(
-            id_=dto.id_,
-            name=dto.name,
-            email=dto.email,
-            created_at=dto.created_at,
-            updated_at=dto.updated_at,
-        )
-
-    def _schema_to_dto(
-        self,
-        schema: TestSchema,
-    ) -> ServiceTestDTO:
-        """Конвертирует Schema в DTO.
-
-        Args:
-            schema: Объект схемы для конвертации
-
-        Returns:
-            ServiceTestDTO: Конвертированный объект DTO
-        """
-        return ServiceTestDTO(
-            id_=schema.id_,
-            name=schema.name,
-            email=schema.email,
-            created_at=schema.created_at,
-            updated_at=schema.updated_at,
-        )
 
 
 class TestBaseServiceClass:
@@ -84,19 +42,53 @@ class TestBaseServiceClass:
 
         assert_that(
             actual_or_assertion=inspect.isabstract(BaseServiceClass),
-            matcher=equal_to(obj=True),
+            matcher=is_(True),
         )
         assert_that(
             actual_or_assertion=hasattr(
                 BaseServiceClass,
                 '__abstractmethods__',
             ),
-            matcher=equal_to(obj=True),
+            matcher=is_(True),
         )
         assert_that(
             actual_or_assertion=len(BaseServiceClass.__abstractmethods__),
             matcher=equal_to(obj=2),
         )
+
+    def test_concrete_class_without_abstract_methods(
+        self,
+    ) -> None:
+        """Проверка создания класса без абстрактных методов.
+
+        Данный тест проверяет, что при попытке создать экземпляр
+        класса, наследующегося от BaseServiceClass, с заглушками
+        в абстрактных методах, возникает NotImplementedError
+        при вызове этих методов.
+        """
+        session = AsyncMock()
+
+        class InvalidService(BaseServiceClass[ServiceTestDTO, TestSchema]):
+            """Класс с заглушками в абстрактных методах."""
+
+            def _dto_to_schema(self, dto: ServiceTestDTO) -> TestSchema:
+                """Заглушка, которая выбрасывает NotImplementedError."""
+                raise NotImplementedError
+
+            def _schema_to_dto(self, schema: TestSchema) -> ServiceTestDTO:
+                """Заглушка, которая выбрасывает NotImplementedError."""
+                raise NotImplementedError
+
+        service = InvalidService(session=session)
+
+        dto = ServiceTestDTO(id_=1, name='test', email='test@example.com')
+
+        with pytest.raises(NotImplementedError):
+            service._dto_to_schema(dto)
+
+        with pytest.raises(NotImplementedError):
+            schema = TestSchema(id_=1, name='test', email='test@example.com')
+            service._schema_to_dto(schema)
 
     def test_dto_to_schema_conversion(
         self,
@@ -118,6 +110,16 @@ class TestBaseServiceClass:
 
         schema = service._dto_to_schema(dto=dto)
 
+        assert_that(
+            actual_or_assertion=isinstance(dto, ServiceTestDTO),
+            matcher=is_(True),
+            reason='dto должен быть экземпляром ServiceTestDTO',
+        )
+        assert_that(
+            actual_or_assertion=isinstance(schema, TestSchema),
+            matcher=is_(True),
+            reason='schema должен быть экземпляром TestSchema',
+        )
         assert_that(
             actual_or_assertion=schema.id_,
             matcher=equal_to(obj=dto.id_),
@@ -151,6 +153,16 @@ class TestBaseServiceClass:
 
         dto = service._schema_to_dto(schema=schema)
 
+        assert_that(
+            actual_or_assertion=isinstance(schema, TestSchema),
+            matcher=is_(True),
+            reason='schema должен быть экземпляром TestSchema',
+        )
+        assert_that(
+            actual_or_assertion=isinstance(dto, ServiceTestDTO),
+            matcher=is_(True),
+            reason='dto должен быть экземпляром ServiceTestDTO',
+        )
         assert_that(
             actual_or_assertion=dto.id_,
             matcher=equal_to(obj=schema.id_),
@@ -306,7 +318,7 @@ class TestBaseServiceClass:
 
         assert_that(
             actual_or_assertion=result,
-            matcher=equal_to(obj=True),
+            matcher=is_(True),
         )
         mock_repository.get_by_id.assert_called_once_with(
             id_=1,
@@ -338,7 +350,7 @@ class TestBaseServiceClass:
 
         assert_that(
             actual_or_assertion=result,
-            matcher=equal_to(obj=False),
+            matcher=is_(False),
         )
         mock_repository.get_by_id.assert_called_once_with(
             id_=1,
@@ -371,7 +383,7 @@ class TestBaseServiceClass:
 
         assert_that(
             actual_or_assertion=result,
-            matcher=equal_to(obj=False),
+            matcher=is_(False),
         )
         mock_repository.get_by_id.assert_called_once_with(
             id_=999,
@@ -404,7 +416,7 @@ class TestBaseServiceClass:
 
         assert_that(
             actual_or_assertion=result,
-            matcher=equal_to(obj=False),
+            matcher=is_(False),
         )
         mock_repository.get_by_id.assert_called_once_with(
             id_=1,
@@ -439,7 +451,7 @@ class TestBaseServiceClass:
 
         assert_that(
             actual_or_assertion=result,
-            matcher=equal_to(obj=False),
+            matcher=is_(False),
         )
         mock_repository.get_by_id.assert_called_once_with(
             id_=1,
@@ -475,7 +487,7 @@ class TestBaseServiceClass:
 
         assert_that(
             actual_or_assertion=result,
-            matcher=equal_to(obj=False),
+            matcher=is_(False),
         )
         mock_repository.get_by_id.assert_called_once_with(
             id_=1,
@@ -510,7 +522,7 @@ class TestBaseServiceClass:
 
         assert_that(
             actual_or_assertion=result,
-            matcher=equal_to(obj=True),
+            matcher=is_(True),
         )
         mock_repository.get_by_id.assert_called_once_with(
             id_=1,
@@ -546,7 +558,7 @@ class TestBaseServiceClass:
 
         assert_that(
             actual_or_assertion=result,
-            matcher=equal_to(obj=False),
+            matcher=is_(False),
         )
         mock_repository.get_by_id.assert_called_once_with(
             id_=1,
@@ -576,5 +588,5 @@ class TestBaseServiceClass:
 
         assert_that(
             actual_or_assertion=result,
-            matcher=equal_to(obj=False),
+            matcher=is_(False),
         )
