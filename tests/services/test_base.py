@@ -1,569 +1,564 @@
-"""Модуль для тестов базового сервиса."""
+"""Тесты для базового сервиса."""
 
-from datetime import datetime, timezone
-from typing import cast
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from hamcrest import (
-    assert_that,
-    calling,
-    equal_to,
-    has_length,
-    has_property,
-    instance_of,
-    is_not,
-    none,
-    not_none,
-    raises,
-)
+from hamcrest import assert_that, equal_to, instance_of, is_
 
-from tests.helpers import (
-    ServiceTestDTO,
-    TestRequestSchema,
-    TestSchema,
-    TestService,
-)
-from weblite_framework.exceptions.repository import RepositoryException
-from weblite_framework.services import BaseServiceClass
+from tests.conftest import TestConcreteService
+from tests.helpers import ServiceTestDTO, TestSchema
+from weblite_framework.services.base import BaseServiceClass
 
 
-class TestBaseService:
-    """Тесты базового класса BaseService."""
+class TestBaseServiceClass:
+    """Класс тестов базового сервиса."""
 
-    def test_dto_to_schema_excludes_resume_id(self) -> None:
-        """Проверяет, что resume_id исключается из схемы."""
-        dt = datetime.now(tz=timezone.utc)
+    def test_initialization(
+        self,
+    ) -> None:
+        """Проверка инициализации базового сервиса.
+
+        Данный тест проверяет корректное присвоение сессии
+        при создании экземпляра сервиса.
+        """
+        session = AsyncMock()
+        service = TestConcreteService(
+            session=session,
+        )
+
+        assert_that(
+            actual_or_assertion=service._session,
+            matcher=equal_to(obj=session),
+        )
+
+    def test_abstract_methods_not_implemented(
+        self,
+    ) -> None:
+        """Проверка, что абстрактные методы не реализованы.
+
+        Данный тест проверяет, что BaseServiceClass является абстрактным.
+        """
+        import inspect
+
+        assert_that(
+            actual_or_assertion=inspect.isabstract(BaseServiceClass),
+            matcher=is_(True),
+        )
+        assert_that(
+            actual_or_assertion=hasattr(
+                BaseServiceClass,
+                '__abstractmethods__',
+            ),
+            matcher=is_(True),
+        )
+        assert_that(
+            actual_or_assertion=len(BaseServiceClass.__abstractmethods__),
+            matcher=equal_to(obj=2),
+        )
+
+    def test_concrete_class_without_abstract_methods(
+        self,
+    ) -> None:
+        """Проверка создания класса без абстрактных методов.
+
+        Данный тест проверяет, что при попытке создать экземпляр
+        класса, просто наследующегося от BaseServiceClass,
+        без переопределения абстрактных методов, возникает TypeError.
+        """
+        session = AsyncMock()
+
+        with pytest.raises(TypeError):
+
+            class InvalidService(BaseServiceClass[ServiceTestDTO, TestSchema]):
+                pass
+
+            InvalidService(session=session)  # type: ignore
+
+    def test_dto_to_schema_conversion(
+        self,
+    ) -> None:
+        """Проверка конвертации DTO в схему.
+
+        Данный тест проверяет корректность работы метода _dto_to_schema.
+        """
+        session = AsyncMock()
+        service = TestConcreteService(
+            session=session,
+        )
+
         dto = ServiceTestDTO(
             id_=1,
-            name='John',
-            email='john@test.com',
-            resume_id=999,
-            created_at=dt,
-            updated_at=dt,
+            name='Test Name',
+            email='test@example.com',
         )
 
-        service = TestService(session=AsyncMock())
-        result = service._dto_to_schema(dto)
+        schema = service._dto_to_schema(dto=dto)
 
         assert_that(
-            actual_or_assertion=result,
-            matcher=has_property('id_', equal_to(1)),
+            actual_or_assertion=schema,
+            matcher=instance_of(atype=TestSchema),
         )
         assert_that(
-            actual_or_assertion=result,
-            matcher=has_property('name', equal_to('John')),
+            actual_or_assertion=schema.id_,
+            matcher=equal_to(obj=dto.id_),
         )
         assert_that(
-            actual_or_assertion=result,
-            matcher=has_property('email', equal_to('john@test.com')),
+            actual_or_assertion=schema.name,
+            matcher=equal_to(obj=dto.name),
         )
         assert_that(
-            actual_or_assertion=result,
-            matcher=has_property('created_at', equal_to(dt)),
-        )
-        assert_that(
-            actual_or_assertion=result,
-            matcher=has_property('updated_at', equal_to(dt)),
-        )
-        assert_that(
-            actual_or_assertion=cast(object, result),
-            matcher=is_not(has_property('resume_id')),  # type: ignore
+            actual_or_assertion=schema.email,
+            matcher=equal_to(obj=dto.email),
         )
 
-    def test_dto_to_schema_with_missing_fields(self) -> None:
-        """Проверяет работу с DTO где часть полей отсутствует."""
-        dto = ServiceTestDTO(id_=2, name='Alice', resume_id=100)
+    def test_schema_to_dto_conversion(
+        self,
+    ) -> None:
+        """Проверка конвертации схемы в DTO.
 
-        service = TestService(session=AsyncMock())
-        result = service._dto_to_schema(dto)
-
-        assert_that(
-            actual_or_assertion=result,
-            matcher=has_property('id_', equal_to(2)),
-        )
-        assert_that(
-            actual_or_assertion=result,
-            matcher=has_property('name', equal_to('Alice')),
-        )
-        assert_that(
-            actual_or_assertion=cast(object, result),
-            matcher=has_property('email', none()),  # type: ignore
-        )
-        assert_that(
-            actual_or_assertion=cast(object, result),
-            matcher=has_property('created_at', none()),  # type: ignore
-        )
-        assert_that(
-            actual_or_assertion=cast(object, result),
-            matcher=has_property('updated_at', none()),  # type: ignore
+        Данный тест проверяет корректность работы метода _schema_to_dto.
+        """
+        session = AsyncMock()
+        service = TestConcreteService(
+            session=session,
         )
 
-    def test_dto_to_schema_with_all_none(self) -> None:
-        """Проверяет работу с DTO где все поля None."""
-        dto = ServiceTestDTO()
-        service = TestService(session=AsyncMock())
-        result = service._dto_to_schema(dto)
-
-        assert_that(actual_or_assertion=result.id_, matcher=none())
-        assert_that(actual_or_assertion=result.name, matcher=none())
-        assert_that(actual_or_assertion=result.email, matcher=none())
-        assert_that(actual_or_assertion=result.created_at, matcher=none())
-        assert_that(actual_or_assertion=result.updated_at, matcher=none())
-
-    def test_bulk_dto_to_schema_multiple_items(self) -> None:
-        """Проверяет массовую конвертацию нескольких DTO."""
-        dt = datetime.now(tz=timezone.utc)
-        dtos = [
-            ServiceTestDTO(
-                id_=1, name='User1', email='u1@test.com', created_at=dt
-            ),
-            ServiceTestDTO(
-                id_=2, name='User2', email='u2@test.com', created_at=dt
-            ),
-            ServiceTestDTO(
-                id_=3, name='User3', email='u3@test.com', created_at=dt
-            ),
-        ]
-
-        service = TestService(session=AsyncMock())
-        results = service._bulk_dto_to_schema(dtos)
-
-        assert_that(actual_or_assertion=results, matcher=has_length(3))
-        assert_that(
-            actual_or_assertion=results[0],
-            matcher=has_property('name', equal_to('User1')),
-        )
-        assert_that(
-            actual_or_assertion=results[1],
-            matcher=has_property('name', equal_to('User2')),
-        )
-        assert_that(
-            actual_or_assertion=results[2],
-            matcher=has_property('name', equal_to('User3')),
+        schema = TestSchema(
+            id_=2,
+            name='Another Name',
+            email='another@example.com',
         )
 
-    def test_bulk_dto_to_schema_empty_list(self) -> None:
-        """Проверяет массовую конвертацию пустого списка."""
-        service = TestService(session=AsyncMock())
-        results = service._bulk_dto_to_schema([])
-
-        assert_that(actual_or_assertion=results, matcher=equal_to([]))
-        assert_that(actual_or_assertion=results, matcher=has_length(0))
-
-    def test_bulk_dto_to_schema_single_item(self) -> None:
-        """Проверяет массовую конвертацию одного элемента."""
-        dto = ServiceTestDTO(id_=1, name='Single', email='single@test.com')
-
-        service = TestService(session=AsyncMock())
-        results = service._bulk_dto_to_schema([dto])
-
-        assert_that(actual_or_assertion=results, matcher=has_length(1))
-        assert_that(
-            actual_or_assertion=results[0],
-            matcher=has_property('name', equal_to('Single')),
-        )
-
-    def test_schema_to_dto_with_additional_fields(self) -> None:
-        """Проверяет конвертацию RequestSchema в DTO с доп. полями."""
-        schema = TestRequestSchema(name='John', email='john@test.com')
-        service = TestService(session=AsyncMock())
-
-        result = service._schema_to_dto(
-            schema,
-            id_=1,
-            resume_id=999,
-            created_at=None,
-            updated_at=None,
-        )
+        dto = service._schema_to_dto(schema=schema)
 
         assert_that(
-            actual_or_assertion=result,
-            matcher=instance_of(ServiceTestDTO),
+            actual_or_assertion=dto,
+            matcher=instance_of(atype=ServiceTestDTO),
         )
         assert_that(
-            actual_or_assertion=result,
-            matcher=has_property('id_', equal_to(1)),
+            actual_or_assertion=dto.id_,
+            matcher=equal_to(obj=schema.id_),
         )
-        assert_that(
-            actual_or_assertion=result,
-            matcher=has_property('name', equal_to('John')),
-        )
-        assert_that(
-            actual_or_assertion=result,
-            matcher=has_property('email', equal_to('john@test.com')),
-        )
-        assert_that(
-            actual_or_assertion=result,
-            matcher=has_property('resume_id', equal_to(999)),
-        )
-
-    def test_schema_to_dto_without_additional_fields(self) -> None:
-        """Проверяет конвертацию RequestSchema в DTO без доп. полей."""
-        schema = TestRequestSchema(name='Jane', email='jane@test.com')
-        service = TestService(session=AsyncMock())
-        result = service._schema_to_dto(schema)
-
-        assert_that(actual_or_assertion=result.id_, matcher=none())
-        assert_that(
-            actual_or_assertion=result.name,
-            matcher=equal_to('Jane'),
-        )
-        assert_that(
-            actual_or_assertion=result.email,
-            matcher=equal_to('jane@test.com'),
-        )
-        assert_that(actual_or_assertion=result.resume_id, matcher=none())
-
-    def test_schema_to_dto_overrides_schema_fields(self) -> None:
-        """Проверяет что дополнительные поля переопределяют схему."""
-        schema = TestRequestSchema(name='Original', email='original@test.com')
-        service = TestService(session=AsyncMock())
-
-        result = service._schema_to_dto(schema, name='Overridden', id_=100)
-
-        assert_that(
-            actual_or_assertion=result.name,
-            matcher=equal_to('Overridden'),
-        )
-        assert_that(
-            actual_or_assertion=result.email,
-            matcher=equal_to('original@test.com'),
-        )
-        assert_that(
-            actual_or_assertion=result.id_,
-            matcher=equal_to(100),
-        )
-
-    def test_bulk_schema_to_dto_multiple_items(self) -> None:
-        """Проверяет массовую конвертацию нескольких RequestSchema."""
-        schemas = [
-            TestRequestSchema(name='User1', email='u1@test.com'),
-            TestRequestSchema(name='User2', email='u2@test.com'),
-            TestRequestSchema(name='User3', email='u3@test.com'),
-        ]
-        service = TestService(session=AsyncMock())
-
-        results = service._bulk_schema_to_dto(
-            schemas,
-            id_=None,
-            resume_id=100,
-            created_at=datetime.now(tz=timezone.utc),
-        )
-
-        assert_that(actual_or_assertion=results, matcher=has_length(3))
-        assert_that(
-            actual_or_assertion=results[0],
-            matcher=has_property('name', equal_to('User1')),
-        )
-        assert_that(
-            actual_or_assertion=results[0],
-            matcher=has_property('resume_id', equal_to(100)),
-        )
-        assert_that(
-            actual_or_assertion=results[1],
-            matcher=has_property('name', equal_to('User2')),
-        )
-        assert_that(
-            actual_or_assertion=results[2],
-            matcher=has_property('name', equal_to('User3')),
-        )
-
-    def test_bulk_schema_to_dto_empty_list(self) -> None:
-        """Проверяет массовую конвертацию пустого списка."""
-        service = TestService(session=AsyncMock())
-        results = service._bulk_schema_to_dto([], id_=None)
-
-        assert_that(actual_or_assertion=results, matcher=equal_to([]))
-        assert_that(actual_or_assertion=results, matcher=has_length(0))
-
-    async def test_is_user_has_access_success(self) -> None:
-        """Проверяет успешную проверку доступа."""
-        resume_repo = Mock()
-        resume_repo.get_by_id = AsyncMock(return_value=Mock(id=1, user_id=100))
-
-        service = TestService(session=AsyncMock(), resume_repo=resume_repo)
-        result = await service._is_user_has_access(resume_id=1, user_id=100)
-
-        assert_that(actual_or_assertion=result, matcher=equal_to(True))
-        resume_repo.get_by_id.assert_awaited_once_with(id_=1)
-
-    async def test_is_user_has_access_resume_not_found(self) -> None:
-        """Проверяет проверку доступа когда резюме не найдено."""
-        resume_repo = Mock()
-        resume_repo.get_by_id = AsyncMock(return_value=None)
-
-        service = TestService(session=AsyncMock(), resume_repo=resume_repo)
-        result = await service._is_user_has_access(resume_id=999, user_id=100)
-
-        assert_that(actual_or_assertion=result, matcher=equal_to(False))
-
-    async def test_is_user_has_access_wrong_user(self) -> None:
-        """Проверяет проверку доступа когда пользователь не владелец."""
-        resume_repo = Mock()
-        resume_repo.get_by_id = AsyncMock(return_value=Mock(id=1, user_id=100))
-
-        service = TestService(session=AsyncMock(), resume_repo=resume_repo)
-        result = await service._is_user_has_access(resume_id=1, user_id=200)
-
-        assert_that(actual_or_assertion=result, matcher=equal_to(False))
-
-    async def test_is_user_has_access_without_resume_repo(self) -> None:
-        """Проверяет поведение когда _resume_repo не установлен."""
-        service = TestService(session=AsyncMock())
-        service._resume_repo = None
-
-        with pytest.raises(
-            RepositoryException,
-            match='.*Репозиторий резюме не инициализирован.*',
-        ):
-            await service._is_user_has_access(resume_id=1, user_id=100)
-
-    async def test_full_conversion_cycle(self) -> None:
-        """Проверяет полный цикл: RequestSchema → DTO → ResponseSchema."""
-        service = TestService(session=AsyncMock())
-        request_schema = TestRequestSchema(
-            name='Integration Test',
-            email='test@integration.com',
-        )
-
-        dto = service._schema_to_dto(
-            request_schema,
-            id_=1,
-            resume_id=999,
-            created_at=datetime.now(tz=timezone.utc),
-            updated_at=datetime.now(tz=timezone.utc),
-        )
-
-        response_schema = service._dto_to_schema(dto)
-
         assert_that(
             actual_or_assertion=dto.name,
-            matcher=equal_to('Integration Test'),
+            matcher=equal_to(obj=schema.name),
         )
         assert_that(
             actual_or_assertion=dto.email,
-            matcher=equal_to('test@integration.com'),
-        )
-        assert_that(
-            actual_or_assertion=dto.resume_id,
-            matcher=equal_to(999),
+            matcher=equal_to(obj=schema.email),
         )
 
-        assert_that(
-            actual_or_assertion=response_schema.name,
-            matcher=equal_to('Integration Test'),
-        )
-        assert_that(
-            actual_or_assertion=response_schema.email,
-            matcher=equal_to('test@integration.com'),
-        )
-        assert_that(
-            actual_or_assertion=cast(object, response_schema),
-            matcher=is_not(has_property('resume_id')),  # type: ignore
+    def test_bulk_dto_to_schema_conversion(
+        self,
+    ) -> None:
+        """Проверка массовой конвертации DTO в схемы.
+
+        Данный тест проверяет корректность работы метода _bulk_dto_to_schema.
+        """
+        session = AsyncMock()
+        service = TestConcreteService(
+            session=session,
         )
 
-    def test_bulk_conversion_cycle(self) -> None:
-        """Проверяет полный цикл массовой конвертации."""
-        service = TestService(session=AsyncMock())
-        request_schemas = [
-            TestRequestSchema(name='User1', email='u1@test.com'),
-            TestRequestSchema(name='User2', email='u2@test.com'),
+        dtos = [
+            ServiceTestDTO(
+                id_=1,
+                name='First',
+                email='first@example.com',
+            ),
+            ServiceTestDTO(
+                id_=2,
+                name='Second',
+                email='second@example.com',
+            ),
+            ServiceTestDTO(
+                id_=3,
+                name='Third',
+                email='third@example.com',
+            ),
         ]
 
-        dtos = service._bulk_schema_to_dto(
-            request_schemas,
-            id_=None,
-            resume_id=100,
-        )
-
-        response_schemas = service._bulk_dto_to_schema(dtos)
+        schemas = service._bulk_dto_to_schema(dtos=dtos)
 
         assert_that(
-            actual_or_assertion=response_schemas,
-            matcher=has_length(2),
-        )
-        assert_that(
-            actual_or_assertion=response_schemas[0].name,
-            matcher=equal_to('User1'),
-        )
-        assert_that(
-            actual_or_assertion=response_schemas[1].name,
-            matcher=equal_to('User2'),
-        )
-        assert_that(
-            actual_or_assertion=cast(object, response_schemas[0]),
-            matcher=is_not(has_property('resume_id')),  # type: ignore
-        )
-        assert_that(
-            actual_or_assertion=cast(object, response_schemas[1]),
-            matcher=is_not(has_property('resume_id')),  # type: ignore
+            actual_or_assertion=len(schemas),
+            matcher=equal_to(obj=len(dtos)),
         )
 
-    def test_valid_service_with_correct_classes(self) -> None:
-        """Проверяет создание валидного сервиса с правильными классами."""
+        for i, (dto, schema) in enumerate(
+            zip(dtos, schemas, strict=False),
+        ):
+            assert_that(
+                actual_or_assertion=schema.id_,
+                matcher=equal_to(obj=dto.id_),
+                reason=f'DTO {i} id mismatch',
+            )
+            assert_that(
+                actual_or_assertion=schema.name,
+                matcher=equal_to(obj=dto.name),
+                reason=f'DTO {i} name mismatch',
+            )
+            assert_that(
+                actual_or_assertion=schema.email,
+                matcher=equal_to(obj=dto.email),
+                reason=f'DTO {i} email mismatch',
+            )
 
-        class ValidService(TestService):
-            pass
+    def test_bulk_schema_to_dto_conversion(
+        self,
+    ) -> None:
+        """Проверка массовой конвертации схем в DTO.
 
-        service = ValidService(session=AsyncMock())
-
-        assert_that(
-            actual_or_assertion=service.DTO_CLASS,
-            matcher=equal_to(ServiceTestDTO),
+        Данный тест проверяет корректность работы метода _bulk_schema_to_dto.
+        """
+        session = AsyncMock()
+        service = TestConcreteService(
+            session=session,
         )
-        assert_that(
-            actual_or_assertion=service.SCHEMA_CLASS,
-            matcher=equal_to(TestSchema),
-        )
-        assert_that(actual_or_assertion=service._session, matcher=not_none())
 
-    def test_valid_service_with_direct_classes(self) -> None:
-        """Проверяет создание валидного сервиса с прямым указанием классов."""
-
-        class ValidService(BaseServiceClass[ServiceTestDTO, TestSchema]):
-            DTO_CLASS = ServiceTestDTO
-            SCHEMA_CLASS = TestSchema
-
-        service = ValidService(session=AsyncMock())
-
-        assert_that(
-            actual_or_assertion=service.DTO_CLASS,
-            matcher=equal_to(ServiceTestDTO),
-        )
-        assert_that(
-            actual_or_assertion=service.SCHEMA_CLASS,
-            matcher=equal_to(TestSchema),
-        )
-        assert_that(actual_or_assertion=service._session, matcher=not_none())
-
-    def test_schema_to_dto_with_invalid_schema(self) -> None:
-        """Проверяет обработку схемы без model_dump."""
-
-        class InvalidSchema:
-            name: str = ''
-            email: str = ''
-
-        service = TestService(session=AsyncMock())
-
-        assert_that(
-            calling(service._schema_to_dto).with_args(InvalidSchema()),
-            raises(
-                RepositoryException,
-                pattern='.*Схема должна иметь метод model_dump.*',
+        schemas = [
+            TestSchema(
+                id_=1,
+                name='First',
+                email='first@example.com',
             ),
-        )
+            TestSchema(
+                id_=2,
+                name='Second',
+                email='second@example.com',
+            ),
+            TestSchema(
+                id_=3,
+                name='Third',
+                email='third@example.com',
+            ),
+        ]
 
-    def test_service_creation_without_classes(self) -> None:
-        """Проверяет создание сервиса без определения классов."""
-
-        class InvalidService(BaseServiceClass):  # type: ignore
-            pass
-
-        service = InvalidService(session=AsyncMock())
-
-        assert_that(
-            actual_or_assertion=service,
-            matcher=instance_of(InvalidService),
-        )
-        assert_that(
-            actual_or_assertion=service,
-            matcher=instance_of(BaseServiceClass),
-        )
-
-        dto_class = getattr(service, 'DTO_CLASS', None)
-        schema_class = getattr(service, 'SCHEMA_CLASS', None)
-
-        assert_that(actual_or_assertion=dto_class, matcher=none())
-        assert_that(actual_or_assertion=schema_class, matcher=none())
-        assert_that(actual_or_assertion=service._session, matcher=not_none())
-
-    def test_service_with_partial_classes(self) -> None:
-        """Проверяет создание сервиса только с одним из классов."""
-
-        class PartialService(BaseServiceClass[ServiceTestDTO, TestSchema]):
-            DTO_CLASS = ServiceTestDTO
-
-        service = PartialService(session=AsyncMock())
+        dtos = service._bulk_schema_to_dto(schemas=schemas)
 
         assert_that(
-            actual_or_assertion=service.DTO_CLASS,
-            matcher=equal_to(ServiceTestDTO),
+            actual_or_assertion=len(dtos),
+            matcher=equal_to(obj=len(schemas)),
         )
 
-        schema_class = getattr(service, 'SCHEMA_CLASS', None)
-        assert_that(actual_or_assertion=schema_class, matcher=none())
+        for i, (schema, dto) in enumerate(
+            zip(schemas, dtos, strict=False),
+        ):
+            assert_that(
+                actual_or_assertion=dto.id_,
+                matcher=equal_to(obj=schema.id_),
+                reason=f'Schema {i} id mismatch',
+            )
+            assert_that(
+                actual_or_assertion=dto.name,
+                matcher=equal_to(obj=schema.name),
+                reason=f'Schema {i} name mismatch',
+            )
+            assert_that(
+                actual_or_assertion=dto.email,
+                matcher=equal_to(obj=schema.email),
+                reason=f'Schema {i} email mismatch',
+            )
 
-    def test_service_creation_with_wrong_dto_class(self) -> None:
-        """Проверяет создание сервиса с неправильным DTO_CLASS."""
-        from tests.helpers import TestDTO as RepositoryTestDTO
+    async def test_is_user_has_access_when_entity_exists_and_belongs_to_user(
+        self,
+    ) -> None:
+        """Проверка принадлежности сущности пользователю.
 
-        class WrongService(BaseServiceClass[ServiceTestDTO, TestSchema]):
-            DTO_CLASS = RepositoryTestDTO  # type: ignore[assignment]
-            SCHEMA_CLASS = TestSchema
-
-        service = WrongService(session=AsyncMock())
-
-        assert_that(
-            actual_or_assertion=service.DTO_CLASS,
-            matcher=equal_to(RepositoryTestDTO),
-        )
-        assert_that(
-            actual_or_assertion=service.SCHEMA_CLASS,
-            matcher=equal_to(TestSchema),
-        )
-
-    def test_dto_class_attribute_exists(self) -> None:
-        """Проверяет, что у сервиса есть атрибут DTO_CLASS."""
-        service = TestService(session=AsyncMock())
-
-        assert_that(
-            actual_or_assertion=service,
-            matcher=has_property('DTO_CLASS'),
-        )
-        assert_that(
-            actual_or_assertion=service,
-            matcher=has_property('SCHEMA_CLASS'),
-        )
-        assert_that(
-            actual_or_assertion=service.DTO_CLASS,
-            matcher=equal_to(ServiceTestDTO),
-        )
-        assert_that(
-            actual_or_assertion=service.SCHEMA_CLASS,
-            matcher=equal_to(TestSchema),
-        )
-
-    def test_service_instance_creation(self) -> None:
-        """Проверяет базовое создание экземпляра сервиса."""
+        Данный тест проверяет, что метод возвращает True,
+        когда сущность существует и принадлежит пользователю.
+        """
         session = AsyncMock()
-        service = TestService(session=session)
+        service = TestConcreteService(
+            session=session,
+        )
+
+        mock_repository = Mock()
+        mock_entity = Mock()
+        mock_entity.user_id = 123
+
+        mock_repository.get_by_id = AsyncMock(
+            return_value=mock_entity,
+        )
+
+        result = await service._is_user_has_access(
+            repository=mock_repository,
+            entity_id=1,
+            entity_field_name='user_id',
+            expected_value=123,
+        )
 
         assert_that(
-            actual_or_assertion=service,
-            matcher=instance_of(TestService),
+            actual_or_assertion=result,
+            matcher=is_(True),
         )
-        assert_that(
-            actual_or_assertion=service,
-            matcher=instance_of(BaseServiceClass),
+        mock_repository.get_by_id.assert_called_once_with(
+            id_=1,
         )
-        assert_that(
-            actual_or_assertion=service._session,
-            matcher=equal_to(session),
-        )
-        assert_that(actual_or_assertion=service._resume_repo, matcher=none())
 
-    def test_service_instance_creation_with_resume_repo(self) -> None:
-        """Проверяет создание экземпляра сервиса с resume_repo."""
+    async def test_is_user_has_access_another_user_entity(
+        self,
+    ) -> None:
+        """Проверка доступа к чужой сущности."""
         session = AsyncMock()
-        resume_repo = Mock()
-        service = TestService(session=session, resume_repo=resume_repo)
+        service = TestConcreteService(
+            session=session,
+        )
+
+        mock_repository = Mock()
+        mock_entity = Mock()
+        mock_entity.user_id = 456
+
+        mock_repository.get_by_id = AsyncMock(
+            return_value=mock_entity,
+        )
+
+        result = await service._is_user_has_access(
+            repository=mock_repository,
+            entity_id=1,
+            entity_field_name='user_id',
+            expected_value=123,
+        )
 
         assert_that(
-            actual_or_assertion=service._session,
-            matcher=equal_to(session),
+            actual_or_assertion=result,
+            matcher=is_(False),
         )
+        mock_repository.get_by_id.assert_called_once_with(
+            id_=1,
+        )
+
+    async def test_is_user_has_access_when_entity_not_exists(
+        self,
+    ) -> None:
+        """Проверка доступа к несуществующей сущности.
+
+        Данный тест проверяет, что метод возвращает False,
+        когда сущность не существует.
+        """
+        session = AsyncMock()
+        service = TestConcreteService(
+            session=session,
+        )
+
+        mock_repository = Mock()
+        mock_repository.get_by_id = AsyncMock(
+            return_value=None,
+        )
+
+        result = await service._is_user_has_access(
+            repository=mock_repository,
+            entity_id=999,
+            entity_field_name='user_id',
+            expected_value=123,
+        )
+
         assert_that(
-            actual_or_assertion=service._resume_repo,
-            matcher=equal_to(resume_repo),
+            actual_or_assertion=result,
+            matcher=is_(False),
+        )
+        mock_repository.get_by_id.assert_called_once_with(
+            id_=999,
+        )
+
+    async def test_is_user_has_access_with_entity_none(
+        self,
+    ) -> None:
+        """Проверка доступа когда entity равен None.
+
+        Данный тест проверяет, что метод возвращает False,
+        когда entity равен None.
+        """
+        session = AsyncMock()
+        service = TestConcreteService(
+            session=session,
+        )
+
+        mock_repository = Mock()
+        mock_repository.get_by_id = AsyncMock(
+            return_value=None,
+        )
+
+        result = await service._is_user_has_access(
+            repository=mock_repository,
+            entity_id=1,
+            entity_field_name='user_id',
+            expected_value=123,
+        )
+
+        assert_that(
+            actual_or_assertion=result,
+            matcher=is_(False),
+        )
+        mock_repository.get_by_id.assert_called_once_with(
+            id_=1,
+        )
+
+    async def test_is_user_has_access_entity_has_no_field_attribute(
+        self,
+    ) -> None:
+        """Проверка доступа когда у entity нет проверяемого атрибута.
+
+        Данный тест проверяет, что метод возвращает False,
+        когда у объекта entity нет проверяемого атрибута.
+        """
+        session = AsyncMock()
+        service = TestConcreteService(
+            session=session,
+        )
+
+        mock_repository = Mock()
+        mock_entity = object()
+
+        mock_repository.get_by_id = AsyncMock(
+            return_value=mock_entity,
+        )
+
+        result = await service._is_user_has_access(
+            repository=mock_repository,
+            entity_id=1,
+            entity_field_name='user_id',
+            expected_value=123,
+        )
+
+        assert_that(
+            actual_or_assertion=result,
+            matcher=is_(False),
+        )
+        mock_repository.get_by_id.assert_called_once_with(
+            id_=1,
+        )
+
+    async def test_is_user_has_access_field_value_is_none(
+        self,
+    ) -> None:
+        """Проверка когда значение поля равно None.
+
+        Данный тест проверяет, что метод возвращает False,
+        когда значение поля равно None.
+        """
+        session = AsyncMock()
+        service = TestConcreteService(
+            session=session,
+        )
+
+        mock_repository = Mock()
+        mock_entity = Mock()
+        mock_entity.user_id = None
+
+        mock_repository.get_by_id = AsyncMock(
+            return_value=mock_entity,
+        )
+
+        result = await service._is_user_has_access(
+            repository=mock_repository,
+            entity_id=1,
+            entity_field_name='user_id',
+            expected_value=123,
+        )
+
+        assert_that(
+            actual_or_assertion=result,
+            matcher=is_(False),
+        )
+        mock_repository.get_by_id.assert_called_once_with(
+            id_=1,
+        )
+
+    async def test_is_user_has_access_with_different_field_name(
+        self,
+    ) -> None:
+        """Проверка принадлежности с другим именем поля.
+
+        Данный тест проверяет работу метода с произвольным именем поля.
+        """
+        session = AsyncMock()
+        service = TestConcreteService(
+            session=session,
+        )
+
+        mock_repository = Mock()
+        mock_entity = Mock()
+        mock_entity.owner_id = 789
+
+        mock_repository.get_by_id = AsyncMock(
+            return_value=mock_entity,
+        )
+
+        result = await service._is_user_has_access(
+            repository=mock_repository,
+            entity_id=1,
+            entity_field_name='owner_id',
+            expected_value=789,
+        )
+
+        assert_that(
+            actual_or_assertion=result,
+            matcher=is_(True),
+        )
+        mock_repository.get_by_id.assert_called_once_with(
+            id_=1,
+        )
+
+    async def test_is_user_has_access_with_different_field_value_not_equal(
+        self,
+    ) -> None:
+        """Проверка принадлежности когда значение поля не совпадает.
+
+        Данный тест проверяет, что метод возвращает False,
+        когда значение поля не совпадает с ожидаемым.
+        """
+        session = AsyncMock()
+        service = TestConcreteService(
+            session=session,
+        )
+
+        mock_repository = Mock()
+        mock_entity = Mock()
+        mock_entity.owner_id = 789
+
+        mock_repository.get_by_id = AsyncMock(
+            return_value=mock_entity,
+        )
+
+        result = await service._is_user_has_access(
+            repository=mock_repository,
+            entity_id=1,
+            entity_field_name='owner_id',
+            expected_value=999,
+        )
+
+        assert_that(
+            actual_or_assertion=result,
+            matcher=is_(False),
+        )
+        mock_repository.get_by_id.assert_called_once_with(
+            id_=1,
+        )
+
+    async def test_is_user_has_access_repository_no_get_by_id_method(
+        self,
+    ) -> None:
+        """Проверка когда у репозитория нет метода get_by_id.
+
+        Данный тест проверяет, что метод возвращает False,
+        когда у репозитория нет метода get_by_id.
+        """
+        session = AsyncMock()
+        service = TestConcreteService(
+            session=session,
+        )
+
+        mock_repository = Mock()
+
+        result = await service._is_user_has_access(
+            repository=mock_repository,
+            entity_id=1,
+            entity_field_name='user_id',
+            expected_value=123,
+        )
+
+        assert_that(
+            actual_or_assertion=result,
+            matcher=is_(False),
         )
