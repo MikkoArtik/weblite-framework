@@ -94,13 +94,21 @@ class BaseServiceClass(Generic[DTO, SCHEMA], ABC):
 
         Returns:
             bool: True если доступ разрешен, False в противном случае
+
+        Raises:
+        AttributeError: Если у репозитория отсутствует метод get_by_id
+            или метод не является асинхронным
+        TypeError: Если метод get_by_id не может быть вызван
+            с указанными аргументами
         """
-        entity = await repository.get_by_id(id_=entity_id)
+        try:
+            entity = await repository.get_by_id(id_=entity_id)
+        except (AttributeError, TypeError):
+            return False
+
         if entity is None:
             return False
 
-        if not hasattr(entity, entity_field_name):
-            return False
+        actual_value = getattr(entity, entity_field_name, None)
 
-        actual_value = getattr(entity, entity_field_name)
-        return bool(actual_value == expected_value)
+        return actual_value is not None and actual_value == expected_value
