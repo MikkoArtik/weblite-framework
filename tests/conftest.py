@@ -30,13 +30,13 @@ class TestConcreteService(TestService):
         self,
         dto: ServiceTestDTO,
     ) -> TestSchema:
-        """Конвертирует DTO в Schema.
+        """Конвертирует Dataclass в PydanticSchema.
 
         Args:
-            dto: Объект DTO для конвертации
+            dto: Объект Dataclass для конвертации
 
         Returns:
-            TestSchema: Конвертированный объект схемы
+            TestSchema: Конвертированный объект PydanticSchema
         """
         return TestSchema(
             id_=dto.id_,
@@ -50,13 +50,13 @@ class TestConcreteService(TestService):
         self,
         schema: TestSchema,
     ) -> ServiceTestDTO:
-        """Конвертирует Schema в DTO.
+        """Конвертирует PydanticSchema в Dataclass.
 
         Args:
-            schema: Объект схемы для конвертации
+            schema: Объект PydanticSchema для конвертации
 
         Returns:
-            ServiceTestDTO: Конвертированный объект DTO
+            ServiceTestDTO: Конвертированный объект Dataclass
         """
         return ServiceTestDTO(
             id_=schema.id_,

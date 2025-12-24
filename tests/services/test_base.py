@@ -1,6 +1,6 @@
 """Тесты для базового сервиса."""
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock
 
 import pytest
 from hamcrest import assert_that, equal_to, instance_of, is_
@@ -77,7 +77,7 @@ class TestBaseServiceClass:
     def test_dto_to_schema_conversion(
         self,
     ) -> None:
-        """Проверка конвертации DTO в схему.
+        """Проверка конвертации Dataclass в PydanticSchema.
 
         Данный тест проверяет корректность работы метода _dto_to_schema.
         """
@@ -114,7 +114,7 @@ class TestBaseServiceClass:
     def test_schema_to_dto_conversion(
         self,
     ) -> None:
-        """Проверка конвертации схемы в DTO.
+        """Проверка конвертации PydanticSchema в Dataclass.
 
         Данный тест проверяет корректность работы метода _schema_to_dto.
         """
@@ -151,7 +151,7 @@ class TestBaseServiceClass:
     def test_bulk_dto_to_schema_conversion(
         self,
     ) -> None:
-        """Проверка массовой конвертации DTO в схемы.
+        """Проверка массовой конвертации Dataclass в PydanticSchema.
 
         Данный тест проверяет корректность работы метода _bulk_dto_to_schema.
         """
@@ -207,7 +207,7 @@ class TestBaseServiceClass:
     def test_bulk_schema_to_dto_conversion(
         self,
     ) -> None:
-        """Проверка массовой конвертации схем в DTO.
+        """Проверка массовой конвертации PydanticSchema в Dataclass.
 
         Данный тест проверяет корректность работы метода _bulk_schema_to_dto.
         """
@@ -259,306 +259,3 @@ class TestBaseServiceClass:
                 matcher=equal_to(obj=schema.email),
                 reason=f'Schema {i} email mismatch',
             )
-
-    async def test_is_user_has_access_when_entity_exists_and_belongs_to_user(
-        self,
-    ) -> None:
-        """Проверка принадлежности сущности пользователю.
-
-        Данный тест проверяет, что метод возвращает True,
-        когда сущность существует и принадлежит пользователю.
-        """
-        session = AsyncMock()
-        service = TestConcreteService(
-            session=session,
-        )
-
-        mock_repository = Mock()
-        mock_entity = Mock()
-        mock_entity.user_id = 123
-
-        mock_repository.get_by_id = AsyncMock(
-            return_value=mock_entity,
-        )
-
-        result = await service._is_user_has_access(
-            repository=mock_repository,
-            entity_id=1,
-            entity_field_name='user_id',
-            expected_value=123,
-        )
-
-        assert_that(
-            actual_or_assertion=result,
-            matcher=is_(True),
-        )
-        mock_repository.get_by_id.assert_called_once_with(
-            id_=1,
-        )
-
-    async def test_is_user_has_access_another_user_entity(
-        self,
-    ) -> None:
-        """Проверка доступа к чужой сущности."""
-        session = AsyncMock()
-        service = TestConcreteService(
-            session=session,
-        )
-
-        mock_repository = Mock()
-        mock_entity = Mock()
-        mock_entity.user_id = 456
-
-        mock_repository.get_by_id = AsyncMock(
-            return_value=mock_entity,
-        )
-
-        result = await service._is_user_has_access(
-            repository=mock_repository,
-            entity_id=1,
-            entity_field_name='user_id',
-            expected_value=123,
-        )
-
-        assert_that(
-            actual_or_assertion=result,
-            matcher=is_(False),
-        )
-        mock_repository.get_by_id.assert_called_once_with(
-            id_=1,
-        )
-
-    async def test_is_user_has_access_when_entity_not_exists(
-        self,
-    ) -> None:
-        """Проверка доступа к несуществующей сущности.
-
-        Данный тест проверяет, что метод возвращает False,
-        когда сущность не существует.
-        """
-        session = AsyncMock()
-        service = TestConcreteService(
-            session=session,
-        )
-
-        mock_repository = Mock()
-        mock_repository.get_by_id = AsyncMock(
-            return_value=None,
-        )
-
-        result = await service._is_user_has_access(
-            repository=mock_repository,
-            entity_id=999,
-            entity_field_name='user_id',
-            expected_value=123,
-        )
-
-        assert_that(
-            actual_or_assertion=result,
-            matcher=is_(False),
-        )
-        mock_repository.get_by_id.assert_called_once_with(
-            id_=999,
-        )
-
-    async def test_is_user_has_access_with_entity_none(
-        self,
-    ) -> None:
-        """Проверка доступа когда entity равен None.
-
-        Данный тест проверяет, что метод возвращает False,
-        когда entity равен None.
-        """
-        session = AsyncMock()
-        service = TestConcreteService(
-            session=session,
-        )
-
-        mock_repository = Mock()
-        mock_repository.get_by_id = AsyncMock(
-            return_value=None,
-        )
-
-        result = await service._is_user_has_access(
-            repository=mock_repository,
-            entity_id=1,
-            entity_field_name='user_id',
-            expected_value=123,
-        )
-
-        assert_that(
-            actual_or_assertion=result,
-            matcher=is_(False),
-        )
-        mock_repository.get_by_id.assert_called_once_with(
-            id_=1,
-        )
-
-    async def test_is_user_has_access_entity_has_no_field_attribute(
-        self,
-    ) -> None:
-        """Проверка доступа когда у entity нет проверяемого атрибута.
-
-        Данный тест проверяет, что метод возвращает False,
-        когда у объекта entity нет проверяемого атрибута.
-        """
-        session = AsyncMock()
-        service = TestConcreteService(
-            session=session,
-        )
-
-        mock_repository = Mock()
-        mock_entity = object()
-
-        mock_repository.get_by_id = AsyncMock(
-            return_value=mock_entity,
-        )
-
-        result = await service._is_user_has_access(
-            repository=mock_repository,
-            entity_id=1,
-            entity_field_name='user_id',
-            expected_value=123,
-        )
-
-        assert_that(
-            actual_or_assertion=result,
-            matcher=is_(False),
-        )
-        mock_repository.get_by_id.assert_called_once_with(
-            id_=1,
-        )
-
-    async def test_is_user_has_access_field_value_is_none(
-        self,
-    ) -> None:
-        """Проверка когда значение поля равно None.
-
-        Данный тест проверяет, что метод возвращает False,
-        когда значение поля равно None.
-        """
-        session = AsyncMock()
-        service = TestConcreteService(
-            session=session,
-        )
-
-        mock_repository = Mock()
-        mock_entity = Mock()
-        mock_entity.user_id = None
-
-        mock_repository.get_by_id = AsyncMock(
-            return_value=mock_entity,
-        )
-
-        result = await service._is_user_has_access(
-            repository=mock_repository,
-            entity_id=1,
-            entity_field_name='user_id',
-            expected_value=123,
-        )
-
-        assert_that(
-            actual_or_assertion=result,
-            matcher=is_(False),
-        )
-        mock_repository.get_by_id.assert_called_once_with(
-            id_=1,
-        )
-
-    async def test_is_user_has_access_with_different_field_name(
-        self,
-    ) -> None:
-        """Проверка принадлежности с другим именем поля.
-
-        Данный тест проверяет работу метода с произвольным именем поля.
-        """
-        session = AsyncMock()
-        service = TestConcreteService(
-            session=session,
-        )
-
-        mock_repository = Mock()
-        mock_entity = Mock()
-        mock_entity.owner_id = 789
-
-        mock_repository.get_by_id = AsyncMock(
-            return_value=mock_entity,
-        )
-
-        result = await service._is_user_has_access(
-            repository=mock_repository,
-            entity_id=1,
-            entity_field_name='owner_id',
-            expected_value=789,
-        )
-
-        assert_that(
-            actual_or_assertion=result,
-            matcher=is_(True),
-        )
-        mock_repository.get_by_id.assert_called_once_with(
-            id_=1,
-        )
-
-    async def test_is_user_has_access_with_different_field_value_not_equal(
-        self,
-    ) -> None:
-        """Проверка принадлежности когда значение поля не совпадает.
-
-        Данный тест проверяет, что метод возвращает False,
-        когда значение поля не совпадает с ожидаемым.
-        """
-        session = AsyncMock()
-        service = TestConcreteService(
-            session=session,
-        )
-
-        mock_repository = Mock()
-        mock_entity = Mock()
-        mock_entity.owner_id = 789
-
-        mock_repository.get_by_id = AsyncMock(
-            return_value=mock_entity,
-        )
-
-        result = await service._is_user_has_access(
-            repository=mock_repository,
-            entity_id=1,
-            entity_field_name='owner_id',
-            expected_value=999,
-        )
-
-        assert_that(
-            actual_or_assertion=result,
-            matcher=is_(False),
-        )
-        mock_repository.get_by_id.assert_called_once_with(
-            id_=1,
-        )
-
-    async def test_is_user_has_access_repository_no_get_by_id_method(
-        self,
-    ) -> None:
-        """Проверка когда у репозитория нет метода get_by_id.
-
-        Данный тест проверяет, что метод возвращает False,
-        когда у репозитория нет метода get_by_id.
-        """
-        session = AsyncMock()
-        service = TestConcreteService(
-            session=session,
-        )
-
-        mock_repository = Mock()
-
-        result = await service._is_user_has_access(
-            repository=mock_repository,
-            entity_id=1,
-            entity_field_name='user_id',
-            expected_value=123,
-        )
-
-        assert_that(
-            actual_or_assertion=result,
-            matcher=is_(False),
-        )

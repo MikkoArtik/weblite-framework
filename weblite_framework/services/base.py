@@ -1,21 +1,23 @@
 """Модуль базового сервиса для работы с бизнес-логикой."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 __all__ = ['BaseServiceClass']
 
+Dataclass = TypeVar('Dataclass')
+PydanticSchema = TypeVar('PydanticSchema')
 
-DTO = TypeVar('DTO')
-SCHEMA = TypeVar('SCHEMA')
 
-
-class BaseServiceClass(Generic[DTO, SCHEMA], ABC):
+class BaseServiceClass(Generic[Dataclass, PydanticSchema], ABC):
     """Базовый сервис с общими методами."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+    ) -> None:
         """Инициализирует базовый сервис.
 
         Args:
@@ -24,91 +26,67 @@ class BaseServiceClass(Generic[DTO, SCHEMA], ABC):
         self._session = session
 
     @abstractmethod
-    def _dto_to_schema(self, dto: DTO) -> SCHEMA:
-        """Конвертирует DTO в Schema.
+    def _dto_to_schema(
+        self,
+        dto: Dataclass,
+    ) -> PydanticSchema:
+        """Конвертирует Dataclass в PydanticSchema.
 
         Args:
-            dto: Объект DTO
+            dto: Объект Dataclass
 
         Returns:
-            SCHEMA: Объект схемы
+            PydanticSchema: Объект схемы
         """
         pass
 
     @abstractmethod
-    def _schema_to_dto(self, schema: SCHEMA) -> DTO:
-        """Конвертирует Schema в DTO.
+    def _schema_to_dto(
+        self,
+        schema: PydanticSchema,
+    ) -> Dataclass:
+        """Конвертирует PydanticSchema в Dataclass.
 
         Args:
-            schema: Объект схемы
+            schema: Объект PydanticSchema
 
         Returns:
-            DTO: Объект DTO
+            Dataclass: Объект Dataclass
         """
         pass
 
-    def _bulk_dto_to_schema(self, dtos: list[DTO]) -> list[SCHEMA]:
-        """Конвертирует список DTO в список схем.
+    def _bulk_dto_to_schema(
+        self,
+        dtos: list[Dataclass],
+    ) -> list[PydanticSchema]:
+        """Конвертирует список Dataclass в список схем PydanticSchema.
 
         Args:
-            dtos: Список объектов DTO
+            dtos: Список объектов Dataclass
 
         Returns:
-            list[SCHEMA]: Список объектов схемы
+            list[PydanticSchema]: Список объектов схемы
         """
-        schemas: list[SCHEMA] = []
+        schemas: list[PydanticSchema] = []
         for dto in dtos:
             schema = self._dto_to_schema(dto)
             schemas.append(schema)
         return schemas
 
-    def _bulk_schema_to_dto(self, schemas: list[SCHEMA]) -> list[DTO]:
-        """Конвертирует список Schema в список DTO.
+    def _bulk_schema_to_dto(
+        self,
+        schemas: list[PydanticSchema],
+    ) -> list[Dataclass]:
+        """Конвертирует список PydanticSchema в список Dataclass.
 
         Args:
             schemas: Список объектов схемы
 
         Returns:
-            list[DTO]: Список объектов DTO
+            list[Dataclass]: Список объектов Dataclass
         """
-        dtos: list[DTO] = []
+        dtos: list[Dataclass] = []
         for schema in schemas:
             dto = self._schema_to_dto(schema)
             dtos.append(dto)
         return dtos
-
-    async def _is_user_has_access(
-        self,
-        repository: Any,  # noqa: ANN401
-        entity_id: int,
-        entity_field_name: str,
-        expected_value: Any,  # noqa: ANN401
-    ) -> bool:
-        """Проверяет принадлежность сущности пользователю.
-
-        Args:
-            repository: Репозиторий с методом get_by_id
-            entity_id: Идентификатор сущности
-            entity_field_name: Название поля для проверки принадлежности
-            expected_value: Ожидаемое значение поля
-
-        Returns:
-            bool: True если доступ разрешен, False в противном случае
-
-        Raises:
-        AttributeError: Если у репозитория отсутствует метод get_by_id
-            или метод не является асинхронным
-        TypeError: Если метод get_by_id не может быть вызван
-            с указанными аргументами
-        """
-        try:
-            entity = await repository.get_by_id(id_=entity_id)
-        except (AttributeError, TypeError):
-            return False
-
-        if entity is None:
-            return False
-
-        actual_value = getattr(entity, entity_field_name, None)
-
-        return actual_value is not None and actual_value == expected_value
