@@ -5,8 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from hamcrest import assert_that, equal_to, instance_of, is_
 
-from tests.conftest import TestConcreteService
-from tests.helpers import ServiceTestDTO, TestSchema
+from tests.helpers import FakeTestService, ServiceTestDTO, TestSchema
 from weblite_framework.services.base import BaseServiceClass
 
 
@@ -22,7 +21,7 @@ class TestBaseServiceClass:
         при создании экземпляра сервиса.
         """
         session = AsyncMock()
-        service = TestConcreteService(
+        service = FakeTestService(
             session=session,
         )
 
@@ -82,7 +81,7 @@ class TestBaseServiceClass:
         Данный тест проверяет корректность работы метода _dto_to_schema.
         """
         session = AsyncMock()
-        service = TestConcreteService(
+        service = FakeTestService(
             session=session,
         )
 
@@ -119,7 +118,7 @@ class TestBaseServiceClass:
         Данный тест проверяет корректность работы метода _schema_to_dto.
         """
         session = AsyncMock()
-        service = TestConcreteService(
+        service = FakeTestService(
             session=session,
         )
 
@@ -156,7 +155,7 @@ class TestBaseServiceClass:
         Данный тест проверяет корректность работы метода _bulk_dto_to_schema.
         """
         session = AsyncMock()
-        service = TestConcreteService(
+        service = FakeTestService(
             session=session,
         )
 
@@ -212,7 +211,7 @@ class TestBaseServiceClass:
         Данный тест проверяет корректность работы метода _bulk_schema_to_dto.
         """
         session = AsyncMock()
-        service = TestConcreteService(
+        service = FakeTestService(
             session=session,
         )
 
