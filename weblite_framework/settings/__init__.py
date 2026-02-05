@@ -1,6 +1,6 @@
 """Настройки для конфигурационных параметров."""
 
-from .database import DatabaseSettings
+from weblite_framework.settings.database import DatabaseSettings
 
 __all__ = [
     'DatabaseSettings',

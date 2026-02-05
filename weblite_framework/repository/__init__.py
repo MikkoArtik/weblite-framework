@@ -1,6 +1,6 @@
 """Модуль репозиториев."""
 
-from .base import BaseRepositoryClass
+from weblite_framework.repository.base import BaseRepositoryClass
 
 __all__ = [
     'BaseRepositoryClass',
