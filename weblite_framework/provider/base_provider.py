@@ -1,7 +1,9 @@
+"""Модуль для получения персональных данных с помощью базового провайдера."""
+
 import asyncio
+from typing import Any
 
 import aiohttp
-from typing import Any
 
 __all__ = [
     'BaseProvider',
@@ -12,8 +14,8 @@ class BaseProvider:
     """Родительский класс HTTP-провайдера для подключения к сервису."""
 
     def __init__(
-            self,
-            session: aiohttp.ClientSession,
+        self,
+        session: aiohttp.ClientSession,
     ) -> None:
         """Инициализирует экземпляр класса BaseProvider.
 
@@ -22,11 +24,10 @@ class BaseProvider:
         """
         self._session = session
 
-
     async def get_data(
-            self,
-            url: str,
-            params: dict[str, Any] | None = None,
+        self,
+        url: str,
+        params: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """Выполняет get - запрос.
 
@@ -40,7 +41,7 @@ class BaseProvider:
         try:
             async with self._session.get(url, params=params) as response:
                 response.raise_for_status()
-                return await response.json()
+                return await response.json()  # type: ignore[no-any-return]
         except (
             aiohttp.ClientResponseError,
             aiohttp.ClientError,
@@ -48,11 +49,10 @@ class BaseProvider:
         ):
             return None
 
-
     async def post_data(
-            self,
-            url: str,
-            params: dict[str, Any] | None = None,
+        self,
+        url: str,
+        params: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """Выполняет post - запрос.
 
@@ -66,7 +66,7 @@ class BaseProvider:
         try:
             async with self._session.post(url, json=params) as response:
                 response.raise_for_status()
-                return await response.json()
+                return await response.json()  # type: ignore[no-any-return]
         except (
             aiohttp.ClientResponseError,
             aiohttp.ClientError,
@@ -74,11 +74,10 @@ class BaseProvider:
         ):
             return None
 
-
     async def delete_data(
-            self,
-            url: str,
-            params: dict[str, Any] | None = None,
+        self,
+        url: str,
+        params: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """Выполняет delete - запрос.
 
@@ -92,7 +91,7 @@ class BaseProvider:
         try:
             async with self._session.delete(url, json=params) as response:
                 response.raise_for_status()
-                return await response.json()
+                return await response.json()  # type: ignore[no-any-return]
         except (
             aiohttp.ClientResponseError,
             aiohttp.ClientError,
