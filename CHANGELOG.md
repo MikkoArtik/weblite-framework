@@ -18,6 +18,12 @@
 
 ## [Unreleased]
 
+## [0.4.4]
+
+### Добавлено
+- Класс `BaseProvider` для работы с внешними сервисами;
+- Тесты `test_base_provider` класса `BaseProvider`;
+
 
 ## [0.4.3]
 
