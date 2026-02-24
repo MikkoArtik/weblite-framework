@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        DOCKER_REGISTRY: ${DOCKER_REGISTRY}
     container_name: weblite_framework
     environment:
       # Конфигурация подключения к S3 (для приложения)
