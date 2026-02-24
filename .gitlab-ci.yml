@@ -30,7 +30,7 @@ build-job:
   environment:
     name: test
   script:
-    - docker build -t $TEST_IMAGE_NAME -build-arg DOCKER_REGISTRY=$DOCKER_REGISTRY .
+    - docker build -t $TEST_IMAGE_NAME --build-arg DOCKER_REGISTRY=$DOCKER_REGISTRY .
 
 # ---------------------------- running ----------------------------------------
 
