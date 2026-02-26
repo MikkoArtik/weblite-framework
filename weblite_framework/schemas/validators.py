@@ -3,7 +3,7 @@
 import re
 from datetime import date, datetime
 from functools import wraps
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 __all__ = [
     'skip_if_none',
@@ -24,12 +24,11 @@ __all__ = [
 ]
 
 
-def skip_if_none(func: Callable[..., str]) -> Callable[..., Optional[str]]:
-    """Декоратор для строковых валидаторов: если value is None — вернуть None.
+def skip_if_none(func: Callable[..., Any]) -> Callable[..., Optional[Any]]:
+    """Декоратор для валидаторов: если value is None — вернуть None.
 
     Args:
-        func: Функция-валидатор, принимающая строку и
-            возвращающая проверенную строку
+        func: Функция-валидатор, принимающая аргумент value
 
     Returns:
         Обёрнутый валидатор, который:
@@ -39,10 +38,10 @@ def skip_if_none(func: Callable[..., str]) -> Callable[..., Optional[str]]:
 
     @wraps(func)
     def wrapper(
-        value: Optional[str],
+        value: Optional[Any],
         *args: object,
         **kwargs: object,
-    ) -> Optional[str]:
+    ) -> Optional[Any]:
         if value is None:
             return None
         return func(value=value, *args, **kwargs)

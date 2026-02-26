@@ -33,28 +33,34 @@ class TestSkipIfNone:
         argnames='inp, expected',
         argvalues=[
             (None, None),
-            ('ok', '[ok]'),
+            ('ok', 'ok'),
+            (123, 123),
+            (True, True),
+            (3.14, 3.14),
+            ([1, 2], [1, 2]),
+            ({'a': 1}, {'a': 1}),
         ],
     )
-    def test_skip_if_none_basic(
+    def test_skip_if_none_any_types(
         self,
-        inp: str | None,
-        expected: str | None,
+        inp: object | None,
+        expected: object | None,
     ) -> None:
         """Проверяет базовое поведение декоратора skip_if_none.
 
         Убеждается, что для None возвращается None,
-        а для строки вызывается исходная функция.
+        а при передаче значения, отличного от None,
+        вызывается исходная функция и возвращается её результат.
 
         Args:
             inp: Входное значение
             expected: Ожидаемый результат после применения декоратора
         """
 
-        def add_brackets_func(value: str) -> str:
-            return f'[{value}]'
+        def identity(value: object) -> object:
+            return value
 
-        wrapped = skip_if_none(func=add_brackets_func)
+        wrapped = skip_if_none(func=identity)
         assert_that(
             actual_or_assertion=wrapped(value=inp),
             matcher=equal_to(obj=expected),
