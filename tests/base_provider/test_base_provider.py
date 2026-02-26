@@ -1,128 +1,199 @@
 """Модуль для тестов класса базового провайдера BaseProvider."""
 
 import asyncio
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
+from hamcrest import assert_that, equal_to
 
 from weblite_framework.provider.base_provider import BaseProvider
 
 pytestmark = pytest.mark.asyncio
 
 
-def make_mock_response(
-    json_data: dict[str, Any] | None = None,
-    raise_error: Exception | None = None,
-) -> AsyncMock:
-    """Mock-объект response для aiohttp-запросов.
+class TestBaseProvider:
+    """Тесты для класса BaseProvider."""
 
-    Args:
-        json_data: Возвращённые данные при вызове await response.json()
-        raise_error: Исключение при неуспешном запросе
+    @patch.object(
+        target=aiohttp.ClientSession,
+        attribute='get',
+    )
+    async def test_get_data_success(
+        self,
+        mock_get: AsyncMock,
+    ) -> None:
+        """Тест успешного выполнения get - запроса.
 
-    Returns:
-        AsyncMock: Mock - объект для дальнейших тестов
-    """
-    mock_response = AsyncMock()
-    if raise_error:
-        mock_response.raise_for_status.side_effect = raise_error
-    else:
+        Args:
+            mock_get: Мок метода aiohttp.ClientSession.get
+        """
+        expected = {'status': 'ok'}
+        mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
-    mock_response.json = AsyncMock(return_value=json_data)
-    return mock_response
+        mock_response.json = AsyncMock(return_value=expected)
 
+        mock_get.return_value.__aenter__.return_value = mock_response
 
-async def test_get_data_success() -> None:
-    """Тест успешного выполнения get - запроса."""
-    expected = {'status': 'ok'}
-    mock_session = MagicMock()
-    mock_response = make_mock_response(json_data=expected)
-    mock_session.get.return_value.__aenter__.return_value = mock_response
-    provider = BaseProvider(session=mock_session)
+        async with aiohttp.ClientSession() as session:
+            provider = BaseProvider(session=session)
+            result = await provider.get_data('/test')
 
-    result = await provider.get_data('/test')
+        assert_that(actual_or_assertion=result, matcher=equal_to(expected))
+        mock_get.assert_called_once_with('/test', params=None)
+        mock_response.raise_for_status.assert_called_once()
+        mock_response.json.assert_awaited_once()
 
-    assert result == expected
-    mock_session.get.assert_called_once_with('/test', params=None)
+    @patch.object(
+        target=aiohttp.ClientSession,
+        attribute='get',
+    )
+    async def test_get_data_error(self, mock_get: AsyncMock) -> None:
+        """Тест проверки обработки ошибки при выполнении get - запроса.
 
-
-async def test_get_data_error() -> None:
-    """Тест проверки обработки ошибки при выполнении get - запроса."""
-    mock_session = MagicMock()
-
-    mock_response = make_mock_response(
-        raise_error=aiohttp.ClientResponseError(
+        Args:
+            mock_get: Мок метода aiohttp.ClientSession.get
+        """
+        err = aiohttp.ClientResponseError(
             request_info=MagicMock(),
             history=(),
             status=500,
             message='error',
         )
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = err
+        mock_response.json = AsyncMock()
+
+        mock_get.return_value.__aenter__.return_value = mock_response
+
+        async with aiohttp.ClientSession() as session:
+            provider = BaseProvider(session=session)
+
+            with pytest.raises(aiohttp.ClientResponseError):
+                await provider.get_data('/test')
+
+            mock_response.json.assert_not_awaited()
+
+    @patch.object(
+        target=aiohttp.ClientSession,
+        attribute='post',
     )
+    async def test_post_data_success(
+        self,
+        mock_post: AsyncMock,
+    ) -> None:
+        """Тест успешного выполнения post - запроса.
 
-    mock_session.get.return_value.__aenter__.return_value = mock_response
-    provider = BaseProvider(session=mock_session)
+        Args:
+            mock_post: Мок метода aiohttp.ClientSession.post
+        """
+        expected = {'created': True}
+        payload = {'name': 'Alex'}
 
-    result = await provider.get_data('/test')
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json = AsyncMock(return_value=expected)
 
-    assert result is None
+        mock_post.return_value.__aenter__.return_value = mock_response
 
+        async with aiohttp.ClientSession() as session:
+            provider = BaseProvider(session=session)
+            result = await provider.post_data('/create', data=payload)
 
-async def test_post_data_success() -> None:
-    """Тест успешного выполнения post - запроса."""
-    expected = {'created': True}
-    mock_session = MagicMock()
-    mock_response = make_mock_response(json_data=expected)
-    mock_session.post.return_value.__aenter__.return_value = mock_response
-    provider = BaseProvider(session=mock_session)
+        assert_that(
+            actual_or_assertion=result,
+            matcher=equal_to(expected),
+        )
+        mock_post.assert_called_once_with('/create', json=payload)
+        mock_response.raise_for_status.assert_called_once()
+        mock_response.json.assert_called_once()
 
-    result = await provider.post_data('/create', params={'name': 'Alex'})
-
-    assert result == expected
-    mock_session.post.assert_called_once_with(
-        '/create',
-        json={'name': 'Alex'},
+    @patch.object(
+        target=aiohttp.ClientSession,
+        attribute='post',
     )
+    async def test_post_data_timeout(
+        self,
+        mock_post: AsyncMock,
+    ) -> None:
+        """Тест обработки таймаута при выполнении post - запроса.
 
+        Args:
+            mock_post: Мок метода aiohttp.ClientSession.post
+        """
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = asyncio.TimeoutError()
+        mock_response.json = AsyncMock()
 
-async def test_post_data_timeout() -> None:
-    """Тест обработки таймаута при выполнении post - запроса."""
-    mock_session = MagicMock()
+        mock_post.return_value.__aenter__.return_value = mock_response
 
-    mock_response = make_mock_response(raise_error=asyncio.TimeoutError())
+        async with aiohttp.ClientSession() as session:
+            provider = BaseProvider(session=session)
 
-    mock_session.post.return_value.__aenter__.return_value = mock_response
-    provider = BaseProvider(session=mock_session)
+            with pytest.raises(asyncio.TimeoutError):
+                await provider.post_data('/create')
 
-    result = await provider.post_data('/create')
+            mock_response.json.assert_not_awaited()
 
-    assert result is None
+    @patch.object(
+        target=aiohttp.ClientSession,
+        attribute='delete',
+    )
+    async def test_delete_data_success(
+        self,
+        mock_delete: AsyncMock,
+    ) -> None:
+        """Тест успешного выполнения delete - запроса.
 
+        Args:
+            mock_delete: Мок метода aiohttp.ClientSession.delete
+        """
+        expected = {'deleted': True}
 
-async def test_delete_data_success() -> None:
-    """Тест успешного выполнения delete - запроса."""
-    expected = {'deleted': True}
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json = AsyncMock(return_value=expected)
 
-    mock_session = MagicMock()
-    mock_response = make_mock_response(json_data=expected)
-    mock_session.delete.return_value.__aenter__.return_value = mock_response
-    provider = BaseProvider(session=mock_session)
+        mock_delete.return_value.__aenter__.return_value = mock_response
 
-    result = await provider.delete_data('/delete')
+        async with aiohttp.ClientSession() as session:
+            provider = BaseProvider(session=session)
+            result = await provider.delete_data('/delete')
 
-    assert result == expected
+        assert_that(
+            actual_or_assertion=result,
+            matcher=equal_to(expected),
+        )
+        mock_delete.assert_called_once_with('/delete')
+        mock_response.raise_for_status.assert_called_once()
+        mock_response.json.assert_called_once()
 
+    @patch.object(
+        target=aiohttp.ClientSession,
+        attribute='delete',
+    )
+    async def test_delete_data_client_error(
+        self,
+        mock_delete: AsyncMock,
+    ) -> None:
+        """Тест обработки клиентской ошибки при выполнении delete - запроса.
 
-async def test_delete_data_client_error() -> None:
-    """Тест обработки клиентской ошибки при выполнении post - запроса."""
-    mock_session = MagicMock()
+        Args:
+            mock_delete: Мок метода aiohttp.ClientSession.delete
+        """
+        err = aiohttp.ClientError()
 
-    mock_response = make_mock_response(raise_error=aiohttp.ClientError())
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = err
+        mock_response.json = AsyncMock()
 
-    mock_session.delete.return_value.__aenter__.return_value = mock_response
-    provider = BaseProvider(session=mock_session)
+        mock_delete.return_value.__aenter__.return_value = mock_response
 
-    result = await provider.delete_data('/delete')
+        async with aiohttp.ClientSession() as session:
+            provider = BaseProvider(session=session)
 
-    assert result is None
+            with pytest.raises(aiohttp.ClientError):
+                await provider.delete_data('/delete')
+
+            mock_response.json.assert_not_awaited()
