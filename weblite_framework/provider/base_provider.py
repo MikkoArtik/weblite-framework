@@ -1,6 +1,5 @@
 """Модуль для получения персональных данных с помощью базового провайдера."""
 
-import asyncio
 from typing import Any
 
 import aiohttp
@@ -28,7 +27,7 @@ class BaseProvider:
         self,
         url: str,
         params: dict[str, Any] | None = None,
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any]:
         """Выполняет get - запрос.
 
         Args:
@@ -36,65 +35,39 @@ class BaseProvider:
             params: параметры запроса
         Returns:
             dict[str, Any]: ответ сервиса при успешном запросе
-            None: при ошибке запроса
         """
-        try:
-            async with self._session.get(url, params=params) as response:
-                response.raise_for_status()
-                return await response.json()  # type: ignore[no-any-return]
-        except (
-            aiohttp.ClientResponseError,
-            aiohttp.ClientError,
-            asyncio.TimeoutError,
-        ):
-            return None
+        async with self._session.get(url, params=params) as response:
+            response.raise_for_status()
+            return await response.json()  # type: ignore[no-any-return]
 
     async def post_data(
         self,
         url: str,
-        params: dict[str, Any] | None = None,
-    ) -> dict[str, Any] | None:
+        data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Выполняет post - запрос.
 
         Args:
             url: адрес эндпоинта
-            params: параметры запроса
+            data: тело запроса
         Returns:
             dict[str, Any]: ответ сервиса при успешном запросе
-            None: при ошибке запроса
         """
-        try:
-            async with self._session.post(url, json=params) as response:
-                response.raise_for_status()
-                return await response.json()  # type: ignore[no-any-return]
-        except (
-            aiohttp.ClientResponseError,
-            aiohttp.ClientError,
-            asyncio.TimeoutError,
-        ):
-            return None
+        async with self._session.post(url, json=data) as response:
+            response.raise_for_status()
+            return await response.json()  # type: ignore[no-any-return]
 
     async def delete_data(
         self,
         url: str,
-        params: dict[str, Any] | None = None,
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any]:
         """Выполняет delete - запрос.
 
         Args:
             url: адрес эндпоинта
-            params: параметры запроса
         Returns:
             dict[str, Any]: ответ сервиса при успешном запросе
-            None: при ошибке запроса
         """
-        try:
-            async with self._session.delete(url, json=params) as response:
-                response.raise_for_status()
-                return await response.json()  # type: ignore[no-any-return]
-        except (
-            aiohttp.ClientResponseError,
-            aiohttp.ClientError,
-            asyncio.TimeoutError,
-        ):
-            return None
+        async with self._session.delete(url) as response:
+            response.raise_for_status()
+            return await response.json()  # type: ignore[no-any-return]
