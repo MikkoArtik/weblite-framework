@@ -6,13 +6,12 @@ import aiohttp
 from yarl import URL
 
 from weblite_framework.enums import HttpMethodEnum
+from weblite_framework.exceptions.auth import UnauthorizedException
+from weblite_framework.exceptions.base import BaseAppException
 
 __all__ = [
     'BaseProvider',
 ]
-
-from weblite_framework.exceptions.auth import UnauthorizedException
-from weblite_framework.exceptions.base import BaseAppException
 
 
 class BaseProvider:
