@@ -18,16 +18,16 @@ __all__ = [
 class BaseProvider(ClientSession):
     """Родительский класс HTTP-провайдера для подключения к сервису."""
 
-    def __init__(self, __base_url: URL, __timeout: float) -> None:
+    def __init__(self, base_url: URL, timeout: float) -> None:
         """Инициализирует экземпляр класса BaseProvider.
 
         Args:
-            __base_url: url для подключения к сервису
-            __timeout: timeout запроса
+            base_url: url для подключения к сервису
+            timeout: timeout запроса
         """
         super().__init__(
-            base_url=__base_url,
-            timeout=ClientTimeout(total=__timeout),
+            base_url=base_url,
+            timeout=ClientTimeout(total=timeout),
         )
 
     async def _create_request(
