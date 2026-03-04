@@ -31,7 +31,7 @@ def timeout() -> float:
 @pytest.fixture
 async def provider(
     base_url: URL, timeout: float
-) -> AsyncGenerator[BaseProvider]:
+) -> AsyncGenerator[BaseProvider, None]:
     """Создаёт экземпляр BaseProvider для тестов.
 
     Args:
