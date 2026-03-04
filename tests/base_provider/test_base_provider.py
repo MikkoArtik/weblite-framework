@@ -32,7 +32,7 @@ class TestBaseProvider:
                 None,
                 {
                     'name': 'Елена',
-                    'email': 'elena.kuznetsova@example.com',
+                    'email': 'elena.kuznetsovaa@example.com',
                 },
                 None,
                 id='body_data',
@@ -47,7 +47,7 @@ class TestBaseProvider:
                 {'include': 'profile'},
                 {
                     'name': 'Елена',
-                    'email': 'elena.kuznetsova@example.com',
+                    'email': 'elena.kuznetsovaa@example.com',
                 },
                 {'Authorization': 'Bearer test-token'},
                 id='full_request',
