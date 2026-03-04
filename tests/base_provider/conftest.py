@@ -13,7 +13,7 @@ def base_url() -> URL:
     """Фикстура базового URL.
 
     Returns:
-        URL: Базовый URL для тестового сервиса.
+        URL: Базовый URL для тестового сервиса
     """
     return URL('http://test')
 
@@ -23,14 +23,15 @@ def timeout() -> float:
     """Фикстура таймаута запроса.
 
     Returns:
-        float: время таймаута типа float.
+        float: время таймаута типа float
     """
     return 10.0
 
 
 @pytest.fixture
 async def provider(
-    base_url: URL, timeout: float
+    base_url: URL,
+    timeout: float,
 ) -> AsyncGenerator[BaseProvider, None]:
     """Создаёт экземпляр BaseProvider для тестов.
 
@@ -39,7 +40,7 @@ async def provider(
         timeout: timeout HTTP-запроса
 
     Yields:
-        BaseProvider: экземпляр провайдера с закрытием сессии после теста.
+        BaseProvider: экземпляр провайдера с закрытием сессии после теста
     """
     provider = BaseProvider(base_url=base_url, timeout=timeout)
     try:
