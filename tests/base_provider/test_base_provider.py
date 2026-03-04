@@ -54,10 +54,10 @@ class TestBaseProvider:
             ),
         ],
     )
-    @patch.object(ClientSession, 'request', new_callable=AsyncMock)
+    @patch.object(ClientSession, 'request')
     async def test_create_request_success(
         self,
-        mock_request: AsyncMock,
+        mock_request: MagicMock,
         provider: BaseProvider,
         path: str,
         method: HTTPMethod,
@@ -80,8 +80,10 @@ class TestBaseProvider:
         response.status = 200
         response.json = AsyncMock(return_value={'ok': True})
 
-        mock_request.return_value.__aenter__ = AsyncMock(return_value=response)
-        mock_request.return_value.__aexit__ = AsyncMock(return_value=None)
+        cm = MagicMock()
+        cm.__aenter__ = AsyncMock(return_value=response)
+        cm.__aexit__ = AsyncMock(return_value=None)
+        mock_request.return_value = cm
 
         mock_ch = AsyncMock(return_value=None)
         provider.check_response_status = mock_ch  # type: ignore[method-assign]
@@ -125,8 +127,10 @@ class TestBaseProvider:
         response.status = 200
         response.json = AsyncMock(return_value=None)
 
-        mock_request.return_value.__aenter__ = AsyncMock(return_value=response)
-        mock_request.return_value.__aexit__ = AsyncMock(return_value=None)
+        cm = MagicMock()
+        cm.__aenter__ = AsyncMock(return_value=response)
+        cm.__aexit__ = AsyncMock(return_value=None)
+        mock_request.return_value = cm
 
         mock_ch = AsyncMock(return_value=None)
         provider.check_response_status = mock_ch  # type: ignore[method-assign]
@@ -138,22 +142,27 @@ class TestBaseProvider:
 
         assert_that(result, equal_to({}))
 
-    @patch.object(
-        ClientSession,
-        'request',
-        side_effect=aiohttp.ClientError('Ошибка соединения'),
-    )
+    @patch.object(ClientSession, 'request')
     async def test_create_request_error_503(
         self,
+        mock_request: MagicMock,
         provider: BaseProvider,
         path: str,
     ) -> None:
         """Проверяет ошибку 503 при ClientError.
 
         Args:
+            mock_request: мок метода ClientSession.request
             provider: BaseProvider
             path: адрес эндпоинта
         """
+        cm = MagicMock()
+        cm.__aenter__ = AsyncMock(
+            side_effect=aiohttp.ClientError('Ошибка соединения')
+        )
+        cm.__aexit__ = AsyncMock(return_value=None)
+        mock_request.return_value = cm
+
         with pytest.raises(BaseAppException) as exc_info:
             await provider._create_request(method=HTTPMethod.GET, path=path)
 
