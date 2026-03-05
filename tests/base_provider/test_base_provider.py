@@ -18,13 +18,13 @@ class TestBaseProvider:
     """Набор юнит-тестов для BaseProvider."""
 
     @pytest.mark.parametrize(
-        'method',
-        [HTTPMethod.GET, HTTPMethod.POST, HTTPMethod.DELETE],
+        argnames='method',
+        argvalues=[HTTPMethod.GET, HTTPMethod.POST, HTTPMethod.DELETE],
         ids=['GET', 'POST', 'DELETE'],
     )
     @pytest.mark.parametrize(
-        'params,data,headers',
-        [
+        argnames='params,data,headers',
+        argvalues=[
             pytest.param(None, None, None, id='empty_request'),
             pytest.param(
                 {'include': 'profile'}, None, None, id='query_params'
@@ -55,7 +55,7 @@ class TestBaseProvider:
             ),
         ],
     )
-    @patch.object(ClientSession, 'request')
+    @patch.object(target=ClientSession, attribute='request')
     async def test_create_request_success(
         self,
         mock_request: MagicMock,
@@ -85,8 +85,8 @@ class TestBaseProvider:
         mock_request.return_value.__aenter__.return_value = response
 
         with patch.object(
-            provider,
-            'check_response_status',
+            target=provider,
+            attribute='check_response_status',
             new_callable=AsyncMock,
         ) as mock_check_response_status:
             result = await provider._create_request(
@@ -128,7 +128,7 @@ class TestBaseProvider:
 
         mock_check_response_status.assert_awaited_once()
 
-    @patch.object(ClientSession, 'request')
+    @patch.object(target=ClientSession, attribute='request')
     async def test_create_request_no_payload(
         self,
         mock_request: MagicMock,
@@ -166,7 +166,7 @@ class TestBaseProvider:
 
         mock_check_response_status.assert_awaited_once()
 
-    @patch.object(ClientSession, 'request')
+    @patch.object(target=ClientSession, attribute='request')
     async def test_create_request_error_503(
         self,
         mock_request: MagicMock,
@@ -205,8 +205,8 @@ class TestBaseProvider:
         )
 
     @pytest.mark.parametrize(
-        'status',
-        [200, 201],
+        argnames='status',
+        argvalues=[200, 201],
     )
     async def test_status_2xx(
         self,
@@ -259,8 +259,8 @@ class TestBaseProvider:
         )
 
     @pytest.mark.parametrize(
-        'status',
-        [500, 503],
+        argnames='status',
+        argvalues=[500, 503],
     )
     async def test_status_5xx(
         self,
