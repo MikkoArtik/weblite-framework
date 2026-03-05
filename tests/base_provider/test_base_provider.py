@@ -20,6 +20,7 @@ class TestBaseProvider:
     @pytest.mark.parametrize(
         'method',
         [HTTPMethod.GET, HTTPMethod.POST, HTTPMethod.DELETE],
+        ids=['GET', 'POST', 'DELETE'],
     )
     @pytest.mark.parametrize(
         'params,data,headers',
@@ -76,25 +77,25 @@ class TestBaseProvider:
             data: тело запроса
             headers: необязательные заголовки запроса
         """
-        response = MagicMock()
-        response.status = 200
-        response.json = AsyncMock(return_value={'ok': True})
-
-        cm = MagicMock()
-        cm.__aenter__ = AsyncMock(return_value=response)
-        cm.__aexit__ = AsyncMock(return_value=None)
-        mock_request.return_value = cm
-
-        mock_ch = AsyncMock(return_value=None)
-        provider.check_response_status = mock_ch  # type: ignore[method-assign]
-
-        result = await provider._create_request(
-            method=method,
-            path=path,
-            params=params,
-            data=data,
-            headers=headers,
+        response = MagicMock(
+            status=200,
+            json=AsyncMock(return_value={'ok': True}),
         )
+
+        mock_request.return_value.__aenter__.return_value = response
+
+        with patch.object(
+            provider,
+            'check_response_status',
+            new_callable=AsyncMock,
+        ) as mock_check_response_status:
+            result = await provider._create_request(
+                method=method,
+                path=path,
+                params=params,
+                data=data,
+                headers=headers,
+            )
 
         assert_that(
             actual_or_assertion=result,
@@ -125,7 +126,7 @@ class TestBaseProvider:
             matcher=equal_to(obj=headers),
         )
 
-        provider.check_response_status.assert_awaited_once()
+        mock_check_response_status.assert_awaited_once()
 
     @patch.object(ClientSession, 'request')
     async def test_create_request_no_payload(
@@ -141,27 +142,29 @@ class TestBaseProvider:
             provider: BaseProvider
             path: адрес эндпоинта
         """
-        response = MagicMock()
-        response.status = 200
-        response.json = AsyncMock(return_value=None)
-
-        cm = MagicMock()
-        cm.__aenter__ = AsyncMock(return_value=response)
-        cm.__aexit__ = AsyncMock(return_value=None)
-        mock_request.return_value = cm
-
-        mock_ch = AsyncMock(return_value=None)
-        provider.check_response_status = mock_ch  # type: ignore[method-assign]
-
-        result = await provider._create_request(
-            method=HTTPMethod.GET,
-            path=path,
+        response = MagicMock(
+            status=200,
+            json=AsyncMock(return_value=None),
         )
+
+        mock_request.return_value.__aenter__.return_value = response
+
+        with patch.object(
+            provider,
+            'check_response_status',
+            new_callable=AsyncMock,
+        ) as mock_check_response_status:
+            result = await provider._create_request(
+                method=HTTPMethod.GET,
+                path=path,
+            )
 
         assert_that(
             actual_or_assertion=result,
             matcher=equal_to(obj={}),
         )
+
+        mock_check_response_status.assert_awaited_once()
 
     @patch.object(ClientSession, 'request')
     async def test_create_request_error_503(
@@ -177,12 +180,10 @@ class TestBaseProvider:
             provider: BaseProvider
             path: адрес эндпоинта
         """
-        cm = MagicMock()
-        cm.__aenter__ = AsyncMock(
+        mock_request.return_value.__aenter__ = AsyncMock(
             side_effect=aiohttp.ClientError('Ошибка соединения')
         )
-        cm.__aexit__ = AsyncMock(return_value=None)
-        mock_request.return_value = cm
+        mock_request.return_value.__aexit__ = AsyncMock(return_value=None)
 
         with pytest.raises(
             expected_exception=BaseAppException,
@@ -203,6 +204,27 @@ class TestBaseProvider:
             matcher=contains_string('Ошибка доступа к сервису'),
         )
 
+    @pytest.mark.parametrize(
+        'status',
+        [200, 201],
+    )
+    async def test_status_2xx(
+        self,
+        provider: BaseProvider,
+        status: int,
+    ) -> None:
+        """Проверяет статус 2xx Success.
+
+        Args:
+            provider: BaseProvider
+            status: успешный статус 2хх
+        """
+        response = MagicMock()
+        response.status = status
+        response.json = AsyncMock(return_value={})
+
+        await provider.check_response_status(response=response)
+
     async def test_status_401(
         self,
         provider: BaseProvider,
@@ -212,8 +234,10 @@ class TestBaseProvider:
         Args:
             provider: BaseProvider
         """
-        response = MagicMock()
-        response.status = 401
+        response = MagicMock(
+            status=401,
+            json=AsyncMock(return_value={}),
+        )
 
         with pytest.raises(
             expected_exception=UnauthorizedException,
@@ -231,22 +255,28 @@ class TestBaseProvider:
 
         assert_that(
             actual_or_assertion=str(err.detail),
-            matcher=contains_string(
-                'Сервис вернул HTTP 401 - авторизация не пройдена.'
-            ),
+            matcher=contains_string('Необходима авторизация'),
         )
 
-    async def test_status_503(
+    @pytest.mark.parametrize(
+        'status',
+        [500, 503],
+    )
+    async def test_status_5xx(
         self,
         provider: BaseProvider,
+        status: int,
     ) -> None:
         """Проверяет статус 503 BaseAppException.
 
         Args:
             provider: BaseProvider
+            status: статус ошибки 5xx
         """
-        response = MagicMock()
-        response.status = 503
+        response = MagicMock(
+            status=status,
+            json=AsyncMock(return_value={}),
+        )
 
         with pytest.raises(
             expected_exception=BaseAppException,
@@ -258,27 +288,13 @@ class TestBaseProvider:
         assert_that(
             actual_or_assertion=err.status_code,
             matcher=equal_to(
-                obj=503,
+                obj=status,
             ),
         )
 
         assert_that(
             actual_or_assertion=str(err.detail),
             matcher=contains_string(
-                'Сервис вернул 503 — временно недоступен.'
+                f'Сервис вернул {status} - временно недоступен.'
             ),
         )
-
-    async def test_status_200(
-        self,
-        provider: BaseProvider,
-    ) -> None:
-        """Проверяет статус 200 Success.
-
-        Args:
-            provider: BaseProvider
-        """
-        response = MagicMock()
-        response.status = 200
-
-        await provider.check_response_status(response=response)

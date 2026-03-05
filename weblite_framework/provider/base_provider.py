@@ -80,19 +80,22 @@ class BaseProvider(ClientSession):
             UnauthorizedException: если статус 401
             BaseAppException: если статус 5xx или другой HTTP статус
         """
-        if response.status == 401:
-            raise UnauthorizedException(
-                detail=f'Сервис вернул HTTP {response.status} - авторизация не пройдена.',  # noqa: E501
+        status = response.status
+
+        if 200 <= status < 300:
+            return
+
+        elif status == 401:
+            raise UnauthorizedException()
+
+        elif status >= 500:
+            raise BaseAppException(
+                status_code=status,
+                detail=f'Сервис вернул {status} - временно недоступен.',  # noqa: E501
             )
 
-        if response.status >= 500:
+        else:
             raise BaseAppException(
-                status_code=503,
-                detail=f'Сервис вернул {response.status} — временно недоступен.',  # noqa: E501
-            )
-
-        elif response.status != 200:
-            raise BaseAppException(
-                status_code=500,
-                detail=f'Неожиданный ответ от сервиса: {response.status}',  # noqa: E501
+                status_code=status,
+                detail='Ошибка запроса к сервису.',  # noqa: E501
             )
