@@ -281,8 +281,9 @@ class TestBaseProvider:
             provider: BaseProvider
             status: успешный статус 2хх
         """
-        response = MagicMock()
-        response.status = status
+        response = AsyncMock(
+            status=status,
+        )
 
         await provider.check_response_status(response=response)
 
@@ -301,7 +302,7 @@ class TestBaseProvider:
             provider: BaseProvider
             status: статус ошибки 4хх
         """
-        response = MagicMock(
+        response = AsyncMock(
             status=status,
         )
 
@@ -343,7 +344,7 @@ class TestBaseProvider:
             provider: BaseProvider
             status: статус ошибки 5xx
         """
-        response = MagicMock(
+        response = AsyncMock(
             status=status,
         )
 

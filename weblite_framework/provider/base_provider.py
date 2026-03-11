@@ -32,7 +32,7 @@ class BaseProvider(ClientSession):
     async def _create_request(
         self,
         method: HTTPMethod,
-        path: str,
+        path: str | URL,
         params: dict[str, str] | None = None,
         data: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
