@@ -7,7 +7,6 @@ import aiohttp
 from aiohttp import ClientSession, ClientTimeout
 from yarl import URL
 
-from weblite_framework.exceptions.auth import UnauthorizedException
 from weblite_framework.exceptions.base import BaseAppException
 
 __all__ = [
@@ -34,8 +33,8 @@ class BaseProvider(ClientSession):
         self,
         method: HTTPMethod,
         path: str,
-        params: dict[str, Any] | None = None,
-        data: dict[str, Any] | None = None,
+        params: dict[str, str] | None = None,
+        data: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Формирует общий вид запроса.
@@ -77,16 +76,18 @@ class BaseProvider(ClientSession):
             response: объект ответа от сервиса
 
         Raises:
-            UnauthorizedException: если статус 401
-            BaseAppException: если статус 5xx или другой HTTP статус
+            BaseAppException: если статус 4xx или другой HTTP статус
         """
         status = response.status
 
         if 200 <= status < 300:
             return
 
-        elif status == 401:
-            raise UnauthorizedException()
+        elif 400 <= status < 500:
+            raise BaseAppException(
+                status_code=status,
+                detail=f'Сервис вернул {status} - ошибка запроса.',  # noqa: E501
+            )
 
         elif status >= 500:
             raise BaseAppException(
@@ -97,5 +98,5 @@ class BaseProvider(ClientSession):
         else:
             raise BaseAppException(
                 status_code=status,
-                detail='Ошибка запроса к сервису.',  # noqa: E501
+                detail='Неожиданный статус ответа сервиса.',  # noqa: E501
             )

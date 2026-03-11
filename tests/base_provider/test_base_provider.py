@@ -1,15 +1,13 @@
 """Модуль для тестов класса BaseProvider."""
 
 from http import HTTPMethod
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import aiohttp
 import pytest
 from aiohttp import ClientSession
 from hamcrest import assert_that, contains_string, equal_to
 
-from weblite_framework.exceptions.auth import UnauthorizedException
 from weblite_framework.exceptions.base import BaseAppException
 from weblite_framework.provider.base_provider import BaseProvider
 
@@ -19,15 +17,37 @@ class TestBaseProvider:
 
     @pytest.mark.parametrize(
         argnames='method',
-        argvalues=[HTTPMethod.GET, HTTPMethod.POST, HTTPMethod.DELETE],
-        ids=['GET', 'POST', 'DELETE'],
+        argvalues=[
+            HTTPMethod.GET,
+            HTTPMethod.POST,
+            HTTPMethod.DELETE,
+        ],
+        ids=[
+            'GET',
+            'POST',
+            'DELETE',
+        ],
     )
     @pytest.mark.parametrize(
-        argnames='params,data,headers',
+        argnames=[
+            'params',
+            'data',
+            'headers',
+        ],
         argvalues=[
-            pytest.param(None, None, None, id='empty_request'),
             pytest.param(
-                {'include': 'profile'}, None, None, id='query_params'
+                None,
+                None,
+                None,
+                id='empty_request',
+            ),
+            pytest.param(
+                {
+                    'include': 'profile',
+                },
+                None,
+                None,
+                id='query_params',
             ),
             pytest.param(
                 None,
@@ -41,29 +61,38 @@ class TestBaseProvider:
             pytest.param(
                 None,
                 None,
-                {'Authorization': 'Bearer test-token'},
+                {
+                    'Authorization': 'Bearer test-token',
+                },
                 id='auth_header',
             ),
             pytest.param(
-                {'include': 'profile'},
+                {
+                    'include': 'profile',
+                },
                 {
                     'name': 'Елена',
                     'email': 'elena.kuznetsovaa@example.com',
                 },
-                {'Authorization': 'Bearer test-token'},
+                {
+                    'Authorization': 'Bearer test-token',
+                },
                 id='full_request',
             ),
         ],
     )
-    @patch.object(target=ClientSession, attribute='request')
+    @patch.object(
+        target=ClientSession,
+        attribute='request',
+    )
     async def test_create_request_success(
         self,
         mock_request: MagicMock,
         provider: BaseProvider,
         path: str,
         method: HTTPMethod,
-        params: dict[str, Any] | None,
-        data: dict[str, Any] | None,
+        params: dict[str, str] | None,
+        data: dict[str, str] | None,
         headers: dict[str, str] | None,
     ) -> None:
         """Проверяет успешное создание запроса.
@@ -77,9 +106,13 @@ class TestBaseProvider:
             data: тело запроса
             headers: необязательные заголовки запроса
         """
-        response = MagicMock(
+        response = Mock(
             status=200,
-            json=AsyncMock(return_value={'ok': True}),
+            json=AsyncMock(
+                return_value={
+                    'ok': True,
+                },
+            ),
         )
 
         mock_request.return_value.__aenter__.return_value = response
@@ -99,7 +132,11 @@ class TestBaseProvider:
 
         assert_that(
             actual_or_assertion=result,
-            matcher=equal_to(obj={'ok': True}),
+            matcher=equal_to(
+                obj={
+                    'ok': True,
+                },
+            ),
         )
 
         mock_request.assert_called_once()
@@ -107,28 +144,41 @@ class TestBaseProvider:
         _, kwargs = mock_request.call_args
         assert_that(
             actual_or_assertion=kwargs['method'],
-            matcher=equal_to(obj=method),
+            matcher=equal_to(
+                obj=method,
+            ),
         )
         assert_that(
             actual_or_assertion=kwargs['url'],
-            matcher=equal_to(obj=path),
+            matcher=equal_to(
+                obj=path,
+            ),
         )
         assert_that(
             actual_or_assertion=kwargs['params'],
-            matcher=equal_to(obj=params),
+            matcher=equal_to(
+                obj=params,
+            ),
         )
         assert_that(
             actual_or_assertion=kwargs['data'],
-            matcher=equal_to(obj=data),
+            matcher=equal_to(
+                obj=data,
+            ),
         )
         assert_that(
             actual_or_assertion=kwargs['headers'],
-            matcher=equal_to(obj=headers),
+            matcher=equal_to(
+                obj=headers,
+            ),
         )
 
         mock_check_response_status.assert_awaited_once()
 
-    @patch.object(target=ClientSession, attribute='request')
+    @patch.object(
+        target=ClientSession,
+        attribute='request',
+    )
     async def test_create_request_no_payload(
         self,
         mock_request: MagicMock,
@@ -142,16 +192,18 @@ class TestBaseProvider:
             provider: BaseProvider
             path: адрес эндпоинта
         """
-        response = MagicMock(
+        response = Mock(
             status=200,
-            json=AsyncMock(return_value=None),
+            json=AsyncMock(
+                return_value=None,
+            ),
         )
 
         mock_request.return_value.__aenter__.return_value = response
 
         with patch.object(
-            provider,
-            'check_response_status',
+            target=provider,
+            attribute='check_response_status',
             new_callable=AsyncMock,
         ) as mock_check_response_status:
             result = await provider._create_request(
@@ -161,12 +213,17 @@ class TestBaseProvider:
 
         assert_that(
             actual_or_assertion=result,
-            matcher=equal_to(obj={}),
+            matcher=equal_to(
+                obj={},
+            ),
         )
 
         mock_check_response_status.assert_awaited_once()
 
-    @patch.object(target=ClientSession, attribute='request')
+    @patch.object(
+        target=ClientSession,
+        attribute='request',
+    )
     async def test_create_request_error_503(
         self,
         mock_request: MagicMock,
@@ -183,12 +240,17 @@ class TestBaseProvider:
         mock_request.return_value.__aenter__ = AsyncMock(
             side_effect=aiohttp.ClientError('Ошибка соединения')
         )
-        mock_request.return_value.__aexit__ = AsyncMock(return_value=None)
+        mock_request.return_value.__aexit__ = AsyncMock(
+            return_value=None,
+        )
 
         with pytest.raises(
             expected_exception=BaseAppException,
         ) as exc_info:
-            await provider._create_request(method=HTTPMethod.GET, path=path)
+            await provider._create_request(
+                method=HTTPMethod.GET,
+                path=path,
+            )
 
         err = exc_info.value
 
@@ -206,7 +268,7 @@ class TestBaseProvider:
 
     @pytest.mark.parametrize(
         argnames='status',
-        argvalues=[200, 201],
+        argvalues=range(200, 300),
     )
     async def test_status_2xx(
         self,
@@ -221,53 +283,61 @@ class TestBaseProvider:
         """
         response = MagicMock()
         response.status = status
-        response.json = AsyncMock(return_value={})
 
         await provider.check_response_status(response=response)
 
-    async def test_status_401(
+    @pytest.mark.parametrize(
+        argnames='status',
+        argvalues=range(400, 500),
+    )
+    async def test_status_4xx(
         self,
         provider: BaseProvider,
+        status: int,
     ) -> None:
-        """Проверяет статус 401 UnauthorizedException.
+        """Проверяет статус 4xx.
 
         Args:
             provider: BaseProvider
+            status: статус ошибки 4хх
         """
         response = MagicMock(
-            status=401,
-            json=AsyncMock(return_value={}),
+            status=status,
         )
 
         with pytest.raises(
-            expected_exception=UnauthorizedException,
+            expected_exception=BaseAppException,
         ) as exc_info:
-            await provider.check_response_status(response=response)
+            await provider.check_response_status(
+                response=response,
+            )
 
         err = exc_info.value
 
         assert_that(
             actual_or_assertion=err.status_code,
             matcher=equal_to(
-                obj=401,
+                obj=status,
             ),
         )
 
         assert_that(
             actual_or_assertion=str(err.detail),
-            matcher=contains_string('Необходима авторизация'),
+            matcher=contains_string(
+                f'Сервис вернул {status} - ошибка запроса.',
+            ),
         )
 
     @pytest.mark.parametrize(
         argnames='status',
-        argvalues=[500, 503],
+        argvalues=range(500, 600),
     )
     async def test_status_5xx(
         self,
         provider: BaseProvider,
         status: int,
     ) -> None:
-        """Проверяет статус 503 BaseAppException.
+        """Проверяет статус 5xx BaseAppException.
 
         Args:
             provider: BaseProvider
@@ -275,13 +345,14 @@ class TestBaseProvider:
         """
         response = MagicMock(
             status=status,
-            json=AsyncMock(return_value={}),
         )
 
         with pytest.raises(
             expected_exception=BaseAppException,
         ) as exc_info:
-            await provider.check_response_status(response=response)
+            await provider.check_response_status(
+                response=response,
+            )
 
         err = exc_info.value
 
