@@ -1,12 +1,13 @@
 """Модуль для тестов класса BaseProvider."""
 
 from http import HTTPMethod
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import aiohttp
 import pytest
 from aiohttp import ClientSession
 from hamcrest import assert_that, contains_string, equal_to
+from yarl import URL
 
 from weblite_framework.exceptions.base import BaseAppException
 from weblite_framework.provider.base_provider import BaseProvider
@@ -26,6 +27,23 @@ class TestBaseProvider:
             'GET',
             'POST',
             'DELETE',
+        ],
+    )
+    @pytest.mark.parametrize(
+        argnames='path',
+        argvalues=[
+            pytest.param(
+                '/v1/users/1',
+                id='user_1',
+            ),
+            pytest.param(
+                '/v1/users/2',
+                id='user_2',
+            ),
+            pytest.param(
+                '/v1/users/3',
+                id='user_3',
+            ),
         ],
     )
     @pytest.mark.parametrize(
@@ -87,9 +105,9 @@ class TestBaseProvider:
     )
     async def test_create_request_success(
         self,
-        mock_request: MagicMock,
+        mock_request: AsyncMock,
         provider: BaseProvider,
-        path: str,
+        path: URL,
         method: HTTPMethod,
         params: dict[str, str] | None,
         data: dict[str, str] | None,
@@ -175,15 +193,32 @@ class TestBaseProvider:
 
         mock_check_response_status.assert_awaited_once()
 
+    @pytest.mark.parametrize(
+        argnames='path',
+        argvalues=[
+            pytest.param(
+                '/v1/users/1',
+                id='user_1',
+            ),
+            pytest.param(
+                '/v1/users/2',
+                id='user_2',
+            ),
+            pytest.param(
+                '/v1/users/3',
+                id='user_3',
+            ),
+        ],
+    )
     @patch.object(
         target=ClientSession,
         attribute='request',
     )
     async def test_create_request_no_payload(
         self,
-        mock_request: MagicMock,
+        mock_request: AsyncMock,
         provider: BaseProvider,
-        path: str,
+        path: URL,
     ) -> None:
         """Проверяет {} при отсутствии payload.
 
@@ -220,15 +255,32 @@ class TestBaseProvider:
 
         mock_check_response_status.assert_awaited_once()
 
+    @pytest.mark.parametrize(
+        argnames='path',
+        argvalues=[
+            pytest.param(
+                '/v1/users/1',
+                id='user_1',
+            ),
+            pytest.param(
+                '/v1/users/2',
+                id='user_2',
+            ),
+            pytest.param(
+                '/v1/users/3',
+                id='user_3',
+            ),
+        ],
+    )
     @patch.object(
         target=ClientSession,
         attribute='request',
     )
     async def test_create_request_error_503(
         self,
-        mock_request: MagicMock,
+        mock_request: AsyncMock,
         provider: BaseProvider,
-        path: str,
+        path: URL,
     ) -> None:
         """Проверяет ошибку 503 при ClientError.
 

@@ -20,10 +20,3 @@ async def provider() -> AsyncGenerator[BaseProvider, None]:
         yield provider
     finally:
         await provider.close()
-
-
-@pytest.fixture(scope='function')
-def path() -> str:
-    """Возвращает путь тестового эндпоинта."""
-    path = '/v1/users/1'
-    return path

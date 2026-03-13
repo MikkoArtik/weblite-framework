@@ -32,7 +32,7 @@ class BaseProvider(ClientSession):
     async def _create_request(
         self,
         method: HTTPMethod,
-        path: str | URL,
+        path: URL,
         params: dict[str, str] | None = None,
         data: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
@@ -50,7 +50,7 @@ class BaseProvider(ClientSession):
             dict[str, Any]: ответ сервиса при успешном запросе
         """
         try:
-            async with super().request(
+            async with self.request(
                 method=method,
                 url=path,
                 params=params,
