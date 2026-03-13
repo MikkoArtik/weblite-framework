@@ -23,7 +23,7 @@
 
 ### Добавлено
 - Класс `BaseProvider` для работы с внешними сервисами;
-- Классы тестов `TestBaseProvider`, `TestCheckResponseStatus` под `BaseProvider`;
+- Класс тестов `TestBaseProvider` под `BaseProvider`;
 
 
 ## [0.4.4]
