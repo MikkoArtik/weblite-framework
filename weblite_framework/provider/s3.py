@@ -4,6 +4,7 @@ from typing import Any
 
 import aioboto3
 from botocore.config import Config
+from botocore.exceptions import ClientError
 
 from weblite_framework.settings.s3 import S3Settings
 
@@ -203,3 +204,81 @@ class S3Provider:
                 keys.append(obj['Key'])
 
         return keys
+
+    @staticmethod
+    def __validate_bucket_name(bucket_name: str) -> None:
+        """Проверяет, что имя бакета непустое.
+
+        Args:
+            bucket_name: Имя бакета.
+
+        Raises:
+            ValueError: Если имя бакета пустое.
+        """
+        if not bucket_name:
+            raise ValueError('Имя бакета не может быть пустым')
+
+    async def _create_bucket(self, bucket_name: str) -> None:
+        """Создаёт S3 бакет (идемпотентно).
+
+        Args:
+            bucket_name: Имя создаваемого бакета
+
+        Raises:
+            ValueError: Если имя бакета пустое
+        """
+        self.__validate_bucket_name(bucket_name=bucket_name)
+
+        s3 = self._ensure_client()
+
+        bucket_config: dict[str, Any] = {'Bucket': bucket_name}
+        region = self.settings.region
+        if region and region != 'us-east-1':
+            bucket_config['CreateBucketConfiguration'] = {
+                'LocationConstraint': region,
+            }
+        try:
+            await s3.create_bucket(**bucket_config)
+        except ClientError as exc:
+            error_code = exc.response.get('Error', {}).get('Code')
+            if error_code == 'BucketAlreadyOwnedByYou':
+                return
+            raise
+
+    async def _empty_bucket(self, bucket_name: str) -> None:
+        """Удаляет все объекты из бакета.
+
+        Args:
+            bucket_name: Имя создаваемого бакета
+
+        """
+        self.__validate_bucket_name(bucket_name=bucket_name)
+
+        s3 = self._ensure_client()
+        paginator = s3.get_paginator('list_objects_v2')
+
+        async for page in paginator.paginate(Bucket=bucket_name):
+            objects = [{'Key': obj['Key']} for obj in page.get('Contents', [])]
+            if objects:
+                await s3.delete_objects(
+                    Bucket=bucket_name, Delete={'Objects': objects}
+                )
+
+    async def _delete_bucket(self, bucket_name: str) -> None:
+        """Удаляет бакет и всё его содержимое (идемпотентно).
+
+        Args:
+            bucket_name: имя удаляемого бакета
+
+        Raises:
+            ValueError: Если имя бакета пустое
+        """
+        self.__validate_bucket_name(bucket_name=bucket_name)
+        s3 = self._ensure_client()
+
+        try:
+            await self._empty_bucket(bucket_name)
+            await s3.delete_bucket(Bucket=bucket_name)
+        except ClientError as error:
+            if error.response.get('Error', {}).get('Code') != 'NoSuchBucket':
+                raise

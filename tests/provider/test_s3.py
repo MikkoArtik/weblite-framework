@@ -4,6 +4,7 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from botocore.exceptions import ClientError
 from hamcrest import assert_that, contains_inanyorder, equal_to
 from hamcrest.core.matcher import Matcher
 
@@ -152,3 +153,157 @@ class TestS3Provider:
                 filename='ok.txt',
                 data=cast(bytes, None),
             )
+
+    @pytest.mark.parametrize(
+        argnames=('method', 'args'),
+        argvalues=[
+            ('_create_bucket', {'bucket_name': ''}),
+            ('_delete_bucket', {'bucket_name': ''}),
+        ],
+    )
+    async def test_validate_bucketname_raises(
+        self,
+        provider: S3Provider,
+        method: str,
+        args: dict[str, Any],
+    ) -> None:
+        """Проверяет вызов ValueError при пустом имени файла.
+
+        Args:
+            provider: S3Provider.
+            method: Имя тестируемого метода.
+            args: Аргументы для вызова метода.
+        """
+        with pytest.raises(expected_exception=ValueError):
+            await getattr(provider, method)(**args)
+
+    async def test_create_bucket_with_no_location_constraint(
+        self,
+        provider: S3Provider,
+        s3_client: AsyncMock,
+    ) -> None:
+        """Проверяет вызов create_bucket.
+
+        Не указываем LocationConstraint при создании.
+
+        Args:
+            provider: S3Provider.
+            s3_client: Мокнутый S3 client.
+        """
+        await provider._create_bucket(bucket_name='new-bucket')
+
+        s3_client.create_bucket.assert_awaited_once_with(Bucket='new-bucket')
+
+    async def test_create_bucket_with_location_constraint(
+        self,
+        provider: S3Provider,
+        s3_client: AsyncMock,
+    ) -> None:
+        """Проверяет вызов create_bucket.
+
+         Явно указываем LocationConstraint при создании.
+
+        Args:
+            provider: S3Provider.
+            s3_client: Мокнутый S3 client.
+        """
+        provider.settings.region = 'eu-central-1'
+
+        await provider._create_bucket(bucket_name='new-bucket')
+
+        s3_client.create_bucket.assert_awaited_once_with(
+            Bucket='new-bucket',
+            CreateBucketConfiguration={
+                'LocationConstraint': 'eu-central-1',
+            },
+        )
+
+    async def test_create_bucket_idempotency(
+        self,
+        provider: S3Provider,
+        s3_client: AsyncMock,
+    ) -> None:
+        """Проверяет идемпотентность _create_bucket.
+
+        Вызывает ошибку BucketAlreadyOwnedByYou.
+
+        Args:
+            provider: S3Provider.
+            s3_client: Мокнутый S3 client.
+        """
+        s3_client.create_bucket = AsyncMock(
+            side_effect=ClientError(
+                error_response={
+                    'Error': {'Code': 'BucketAlreadyOwnedByYou'},
+                },
+                operation_name='CreateBucket',
+            ),
+        )
+        await provider._create_bucket(bucket_name='existing-bucket')
+        s3_client.create_bucket.assert_awaited_once_with(
+            Bucket='existing-bucket'
+        )
+
+    async def test_delete_bucket_with_contents(
+        self,
+        provider: S3Provider,
+        s3_client: AsyncMock,
+    ) -> None:
+        """Проверяет удаление объектов и самого бакета.
+
+        Args:
+            provider: S3Provider.
+            s3_client: Мокнутый S3 client.
+        """
+        paginator = MagicMock()
+        s3_client.get_paginator = MagicMock(return_value=paginator)
+        pages = [
+            {
+                'Contents': [
+                    {'Key': 'a.txt'},
+                    {'Key': 'b.txt'},
+                ],
+            },
+        ]
+        paginator.paginate.return_value = aiter_pages(pages=pages)
+
+        await provider._delete_bucket(bucket_name='bucket_1')
+        s3_client.get_paginator.assert_called_with('list_objects_v2')
+        s3_client.delete_objects.assert_awaited_once_with(
+            Bucket='bucket_1',
+            Delete={
+                'Objects': [
+                    {'Key': 'a.txt'},
+                    {'Key': 'b.txt'},
+                ],
+            },
+        )
+        s3_client.delete_bucket.assert_awaited_once_with(Bucket='bucket_1')
+
+    async def test_delete_not_existing_bucket(
+        self,
+        provider: S3Provider,
+        s3_client: AsyncMock,
+    ) -> None:
+        """Проверяет идемпотентность метода _delete_bucket.
+
+         Случай, когда бакет пустой и удалять нечего.
+
+        Args:
+            provider: S3Provider.
+            s3_client: Мокнутый S3 client.
+        """
+        paginator = MagicMock()
+        s3_client.get_paginator = MagicMock(return_value=paginator)
+        paginator.paginate.return_value = aiter_pages(pages=[])
+
+        s3_client.delete_bucket.side_effect = ClientError(
+            error_response={'Error': {'Code': 'NoSuchBucket'}},
+            operation_name='DeleteBucket',
+        )
+
+        await provider._delete_bucket(bucket_name='bucket_2')
+
+        s3_client.get_paginator.assert_called_with('list_objects_v2')
+        s3_client.delete_objects.assert_not_awaited()
+        s3_client.delete_bucket.assert_awaited_once_with(Bucket='bucket_2')
