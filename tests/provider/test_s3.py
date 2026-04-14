@@ -239,10 +239,10 @@ class TestS3Provider:
                 operation_name='CreateBucket',
             ),
         )
-        await provider._create_bucket(bucket_name='existing-bucket')
-        s3_client.create_bucket.assert_awaited_once_with(
-            Bucket='existing-bucket'
-        )
+        call_count = 3
+        for call_number in range(call_count):
+            await provider._create_bucket(bucket_name='existing-bucket')
+        assert s3_client.create_bucket.call_count == call_count
 
     async def test_delete_bucket_with_contents(
         self,
