@@ -33,6 +33,13 @@
 - Класс тестов `TestBaseProvider` под `BaseProvider`;
 
 
+## [0.4.5]
+
+### Добавлено
+- Класс `BaseProvider` для работы с внешними сервисами;
+- Класс тестов `TestBaseProvider` под `BaseProvider`;
+
+
 ## [0.4.4]
 
 ### Изменено
