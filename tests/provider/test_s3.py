@@ -225,20 +225,19 @@ class TestS3Provider:
     ) -> None:
         """Проверяет идемпотентность _create_bucket.
 
-        Вызывает ошибку BucketAlreadyOwnedByYou.
-
         Args:
             provider: S3Provider.
             s3_client: Мокнутый S3 client.
         """
-        s3_client.create_bucket = AsyncMock(
-            side_effect=ClientError(
-                error_response={
-                    'Error': {'Code': 'BucketAlreadyOwnedByYou'},
-                },
-                operation_name='CreateBucket',
-            ),
+        test_error = ClientError(
+            error_response={'Error': {'Code': 'BucketAlreadyOwnedByYou'}},
+            operation_name='CreateBucket',
         )
+
+        s3_client.create_bucket = AsyncMock(
+            side_effect=[None, test_error, test_error]
+        )
+
         call_count = 3
         for call_number in range(call_count):
             await provider._create_bucket(bucket_name='existing-bucket')
