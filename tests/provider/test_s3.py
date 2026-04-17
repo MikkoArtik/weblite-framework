@@ -1,7 +1,7 @@
 """Модуль для тестов S3Provider: загрузка, чтение, удаление, листинг."""
 
 from typing import Any, cast
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from botocore.exceptions import ClientError
@@ -86,8 +86,8 @@ class TestS3Provider:
             provider: S3Provider.
             s3_client: Мокнутый S3 client.
         """
-        paginator = MagicMock()
-        s3_client.get_paginator = MagicMock(return_value=paginator)
+        paginator = Mock()
+        s3_client.get_paginator = Mock(return_value=paginator)
 
         pages = [
             {'Contents': [{'Key': 'x/a.txt'}, {'Key': 'x/b.txt'}]},
@@ -218,30 +218,46 @@ class TestS3Provider:
             },
         )
 
+    @pytest.mark.parametrize(
+        'error_code',
+        [
+            'BucketAlreadyOwnedByYou',
+            'BucketAlreadyExists',
+        ],
+    )
     async def test_create_bucket_idempotency(
         self,
         provider: S3Provider,
         s3_client: AsyncMock,
+        error_code: str,
     ) -> None:
         """Проверяет идемпотентность _create_bucket.
 
         Args:
             provider: S3Provider.
             s3_client: Мокнутый S3 client.
+            error_code: Код ошибки от S3
         """
         test_error = ClientError(
-            error_response={'Error': {'Code': 'BucketAlreadyOwnedByYou'}},
+            error_response={
+                'Error': {
+                    'Code': error_code,
+                }
+            },
             operation_name='CreateBucket',
         )
 
         s3_client.create_bucket = AsyncMock(
-            side_effect=[None, test_error, test_error]
+            side_effect=[
+                None,
+                test_error,
+            ]
         )
 
-        call_count = 3
+        call_count = 2
         for call_number in range(call_count):
             await provider._create_bucket(bucket_name='existing-bucket')
-        assert s3_client.create_bucket.call_count == call_count
+        assert_that(s3_client.create_bucket.call_count, equal_to(call_count))
 
     async def test_delete_bucket_with_contents(
         self,
@@ -254,8 +270,8 @@ class TestS3Provider:
             provider: S3Provider.
             s3_client: Мокнутый S3 client.
         """
-        paginator = MagicMock()
-        s3_client.get_paginator = MagicMock(return_value=paginator)
+        paginator = Mock()
+        s3_client.get_paginator = Mock(return_value=paginator)
         pages = [
             {
                 'Contents': [
@@ -284,25 +300,55 @@ class TestS3Provider:
         provider: S3Provider,
         s3_client: AsyncMock,
     ) -> None:
-        """Проверяет идемпотентность метода _delete_bucket.
-
-         Случай, когда бакет пустой и удалять нечего.
+        """Проверяет удаление несуществующего бакета.
 
         Args:
             provider: S3Provider.
             s3_client: Мокнутый S3 client.
         """
-        paginator = MagicMock()
-        s3_client.get_paginator = MagicMock(return_value=paginator)
+        paginator = Mock()
+        s3_client.get_paginator = Mock(return_value=paginator)
         paginator.paginate.return_value = aiter_pages(pages=[])
 
-        s3_client.delete_bucket.side_effect = ClientError(
-            error_response={'Error': {'Code': 'NoSuchBucket'}},
-            operation_name='DeleteBucket',
+        s3_client.head_bucket.side_effect = ClientError(
+            error_response={
+                'Error': {
+                    'Code': 'NoSuchBucket',
+                }
+            },
+            operation_name='HeadBucket',
         )
 
         await provider._delete_bucket(bucket_name='bucket_2')
 
+        # assert_that(s3_client.head_bucket.await_count, equal_to(2))
+        s3_client.head_bucket.assert_awaited_once_with(Bucket='bucket_2')
+        s3_client.head_bucket.assert_awaited_with(Bucket='bucket_2')
+        s3_client.get_paginator.assert_not_called()
+        s3_client.delete_objects.assert_not_awaited()
+        s3_client.delete_bucket.assert_not_awaited()
+
+    async def test_delete_empty_existing_bucket(
+        self,
+        provider: S3Provider,
+        s3_client: AsyncMock,
+    ) -> None:
+        """Проверяет удаление пустого, но существующего бакета.
+
+        Args:
+            provider: S3Provider.
+            s3_client: Мокнутый S3 client.
+        """
+        bucket_name = 'bucket_2'
+        s3_client.head_bucket.return_value = {}
+
+        paginator = Mock()
+        s3_client.get_paginator = Mock(return_value=paginator)
+        paginator.paginate.return_value = aiter_pages(pages=[])
+
+        await provider._delete_bucket(bucket_name=bucket_name)
+
+        s3_client.head_bucket.assert_awaited_once_with(Bucket=bucket_name)
         s3_client.get_paginator.assert_called_with('list_objects_v2')
         s3_client.delete_objects.assert_not_awaited()
-        s3_client.delete_bucket.assert_awaited_once_with(Bucket='bucket_2')
+        s3_client.delete_bucket.assert_awaited_once_with(Bucket=bucket_name)

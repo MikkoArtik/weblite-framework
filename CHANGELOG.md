@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 ### Добавлено
+- Метод `_check_bucket_exists` в `S3Provider` для проверки существования бакета;
 - Метод `_validate_bucket_name` в `S3Provider` для валидации имени бакета; 
 - Метод `_create_bucket` в `S3Provider` для идемпотентного создания бакета; 
 - Метод `_clear_bucket` в `S3Provider` для очистки содержимого бакета; 

@@ -205,8 +205,8 @@ class S3Provider:
 
         return keys
 
-    @staticmethod
-    def _validate_bucket_name(bucket_name: str) -> None:
+    @classmethod
+    def __validate_bucket_name(cls, bucket_name: str) -> None:
         """Проверяет, что имя бакета непустое.
 
         Args:
@@ -222,12 +222,16 @@ class S3Provider:
         """Создаёт S3 бакет (идемпотентно).
 
         Args:
-            bucket_name: Имя создаваемого бакета
+            bucket_name: Имя создаваемого бакета.
 
         Raises:
             ValueError: Если имя бакета пустое
         """
-        self._validate_bucket_name(bucket_name=bucket_name)
+        acceptable_errors = (
+            'BucketAlreadyOwnedByYou',
+            'BucketAlreadyExists',
+        )
+        self.__validate_bucket_name(bucket_name=bucket_name)
 
         s3 = self._ensure_client()
 
@@ -241,18 +245,40 @@ class S3Provider:
             await s3.create_bucket(**bucket_config)
         except ClientError as exc:
             error_code = exc.response['Error']['Code']
-            if error_code == 'BucketAlreadyOwnedByYou':
+            if error_code in acceptable_errors:
                 return
+            raise
+
+    async def _check_bucket_exists(self, bucket_name: str) -> bool:
+        """Проверяет существование бакета в S3.
+
+        Args:
+            bucket_name: Имя проверяемого бакета.
+
+        Returns:
+            True, если бакет существует, иначе False.
+        """
+        self.__validate_bucket_name(bucket_name=bucket_name)
+        s3 = self._ensure_client()
+
+        try:
+            await s3.head_bucket(Bucket=bucket_name)
+            return True
+        except ClientError as error:
+            error_code = error.response['Error']['Code']
+            if error_code == 'NoSuchBucket':
+                return False
             raise
 
     async def __clear_bucket(self, bucket_name: str) -> None:
         """Удаляет все объекты из бакета.
 
         Args:
-            bucket_name: Имя очищаемого бакета
+            bucket_name: Имя очищаемого бакета.
 
         """
-        self._validate_bucket_name(bucket_name=bucket_name)
+        # if not await self._check_bucket_exists(bucket_name):
+        #     return
 
         s3 = self._ensure_client()
         paginator = s3.get_paginator('list_objects_v2')
@@ -270,18 +296,14 @@ class S3Provider:
         """Удаляет бакет и всё его содержимое (идемпотентно).
 
         Args:
-            bucket_name: Имя удаляемого бакета
+            bucket_name: Имя удаляемого бакета.
 
         Raises:
-            ValueError: Если имя бакета пустое
+            ValueError: Если имя бакета пустое.
         """
-        self._validate_bucket_name(bucket_name=bucket_name)
-        s3 = self._ensure_client()
+        if not await self._check_bucket_exists(bucket_name):
+            return
 
-        try:
-            await self.__clear_bucket(bucket_name)
-            bucket_config = {'Bucket': bucket_name}
-            await s3.delete_bucket(**bucket_config)
-        except ClientError as error:
-            if error.response['Error']['Code'] != 'NoSuchBucket':
-                raise
+        await self.__clear_bucket(bucket_name)
+        s3 = self._ensure_client()
+        await s3.delete_bucket(Bucket=bucket_name)
